@@ -164,7 +164,7 @@ function Page() {
                 </div>
               </div>
 
-              <div className="w-full h-[2px] bg-[#e3e3e3] my-5 rounded"></div>
+              <div className="w-full h-0.5 bg-[#e3e3e3] my-5 rounded"></div>
 
               <div className="flex flex-col gap-3 mt-5 text-sm">
                 <div className="flex justify-between font-bold text-lg">

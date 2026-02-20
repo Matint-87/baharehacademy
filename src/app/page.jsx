@@ -1,4 +1,3 @@
-import { Courses } from "../components/Courses";
 import { Testimonials } from "../components/Testimonials";
 import { Recipes } from "../components/Recipes";
 import Hero from "../components/Hero";
@@ -13,7 +12,7 @@ export default function Home() {
       <div className="flex px-5 my-20 flex-col gap-10">
         <div className="flex justify-between">
         <h1 className="text-xl font-bold">محصولات جدید</h1>
-        <Link href="" className="text-sm font-bold flex items-center gap-2 text-[#E24257]">
+        <Link href="/products" className="text-sm font-bold flex items-center gap-2 text-[#E24257]">
           <span>مشاهده همه</span>
           <FaArrowLeft />
         </Link>
@@ -22,7 +21,6 @@ export default function Home() {
           <ProductSlider />
         </div>
       </div>
-      <Courses />
       <Recipes />
       <Testimonials />
     </main>
