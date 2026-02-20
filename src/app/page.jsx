@@ -1,5 +1,4 @@
 import { Courses } from "../components/Courses";
-import { About } from "../components/About";
 import { Testimonials } from "../components/Testimonials";
 import { Recipes } from "../components/Recipes";
 import Hero from "../components/Hero";
@@ -25,7 +24,6 @@ export default function Home() {
       </div>
       <Courses />
       <Recipes />
-      <About />
       <Testimonials />
     </main>
   );
