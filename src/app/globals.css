@@ -9,4 +9,12 @@
 :root {
   --fontFamily: Number;
 }
-
+.bgg {
+  background: linear-gradient(
+    to bottom right,
+    #e24257 0%,
+    #e24257 50%,
+    #EBEFF3 50%,
+    #EBEFF3 100%
+  );
+}
