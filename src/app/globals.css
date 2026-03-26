@@ -2,9 +2,9 @@
 
 @font-face {
   font-family: Number;
-  src: url(../../public/font/Vazirmatn-Black.ttf);
-  src: url(../../public/font/Vazirmatn-ExtraBold.ttf);
-  src: url(../../public/font/Vazirmatn-Regular.ttf);
+  src: url(../../public/font/Vazirmatn-FD-Medium.6f2fbed0.woff2);
+  src: url(../../public/font/Vazirmatn-FD-Regular.36566045.woff2);
+  src: url(../../public/font/Vazirmatn-FD-SemiBold.38feaedd.woff2);
 }
 :root {
   --fontFamily: Number;

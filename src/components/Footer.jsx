@@ -1,6 +1,6 @@
 // components/Footer.js
 export const Footer = () => (
-  <footer className="bg-gray-900 text-white py-6 text-center">
-    © 2026 آکادمی آشپزی اسفندیاری
+  <footer className="bg-[#282A32] text-white py-2 text-center text-sm">
+    تمامی حقوق برای وب‌سایت آکادمی آشپزی محفوظ است .
   </footer>
-)
+);
