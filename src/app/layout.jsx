@@ -11,11 +11,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" dir="rtl">
       <body
-        className="font-[Number]"
+        className="font-[Number] bg-[#101011]"
       >
-        <Header />
         {children}
-        <Footer />
       </body>
     </html>
   );

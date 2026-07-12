@@ -142,10 +142,10 @@ function Page() {
             {/* Products Grid */}
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
               <ProductItems 
-                search={search}
-                categories={selectedCategories}
-                priceRange={priceRange}
-                sortBy={sortBy}
+                // search={search}
+                // categories={selectedCategories}
+                // priceRange={priceRange}
+                // sortBy={sortBy}
               />
             </div>
           </div>

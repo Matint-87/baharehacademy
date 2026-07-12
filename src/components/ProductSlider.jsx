@@ -40,3 +40,4 @@ export default function ProductSlider() {
     </Swiper>
   );
 }
+

@@ -1,45 +1,19 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
 
-// داده‌های ثابت برای محصولات
-const products = [
-  {
-    id: 1,
-    name: "پیتزا مخصوص",
-    description: "پیتزا با ژامبون، قارچ، پنیر و سس مخصوص",
-    image:
-      "https://cdn.snappfood.ir/300x200/uploads/images/vendor-cover-app-review/16/09.jpg",
-    price: 120000,
-    discount: 20,
-    final_price: 96000,
-  },
-  {
-    id: 2,
-    name: "پیتزا گوشت و پنیر",
-    description: "پیتزا با گوشت، پنیر و سبزیجات",
-    image:
-      "https://cdn.snappfood.ir/300x200/uploads/images/vendor-cover-app-review/16/09.jpg",
-    price: 150000,
-    discount: 10,
-    final_price: 135000,
-  },
-  {
-    id: 3,
-    name: "پیتزا سبزیجات",
-    description: "پیتزا با سبزیجات تازه و پنیر",
-    image:
-      "https://cdn.snappfood.ir/300x200/uploads/images/vendor-cover-app-review/16/09.jpg",
-    price: 110000,
-    discount: 0,
-    final_price: 110000,
-  },
-];
+async function getProducts() {
+  "use server"
+  try {
+    const [rows] = await pool.query("SELECT * FROM products");
+    return rows;
+  } catch (error) {
+    console.error("Database Error:", error);
+    return [];
+  }
+}
 
-function ProductItems() {
-  const [productList] = useState(products);
+export default async function ProductItems() {
+  const productList = await getProducts();
 
   return (
     <>
@@ -95,5 +69,3 @@ function ProductItems() {
     </>
   );
 }
-
-export default ProductItems;
