@@ -1,13 +1,11 @@
-import Hero from "../components/Hero";
-import ProductSlider from "../components/ProductSlider";
-import { FaArrowLeft } from "react-icons/fa";
-import Link from "next/link";
 import Header from "../components/Header";
+import Hero from "../components/Hero";
 
 export default function Home() {
   return (
     <>
       <Header/>
+      <Hero/>
     </>
   );
 }

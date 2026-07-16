@@ -3,7 +3,7 @@ const nextConfig = {
   /* config options here */
   reactStrictMode: true,
   images: {
-    domains: ["cdn.snappfood.ir"], // دامنه تصاویر خارجی
+    domains: ["cdn.snappfood.ir"], 
   },
 };
 
