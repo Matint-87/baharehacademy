@@ -66,13 +66,13 @@ function Header() {
           </div>
         </header>
 
-        <nav className="fixed backdrop-blur-[14px] bg-white/40 bottom-0 left-0 w-full shadow-md flex justify-around items-center py-2 lg:hidden z-50">
+        <nav className="fixed backdrop-blur-[14px] bg-[#101011]/40 bottom-0 left-0 w-full shadow-md flex justify-around items-center py-2 lg:hidden z-50">
           {navLinks.map((item) => (
             <Link
               key={item.title}
               href={item.href}
-              className={`flex flex-col items-center text-[10px] hover:text-[#e24257] duration-300 ${
-                pathName === item.href ? "text-[#e24257]" : "text-gray-800"
+              className={`flex flex-col items-center text-[10px] duration-300 ${
+                pathName === item.href ? "text-[#CD9F63]" : "text-gray-200"
               }`}
             >
               <div className="text-xl">{item.icon}</div>

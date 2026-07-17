@@ -38,7 +38,7 @@ export default function Slider() {
       <SwiperSlide>
         <Link
           href="/courses/1"
-          className=" group relative block w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
+          className=" group relative block w-55 md:w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
           <div className="relative h-41 overflow-hidden">
             <img
               src="/images/kek.jpeg"
@@ -75,7 +75,7 @@ export default function Slider() {
       <SwiperSlide>
         <Link
           href="/courses/1"
-          className=" group relative block w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
+          className=" group relative block w-55 md:w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
           <div className="relative h-41 overflow-hidden">
             <img
               src="/images/kek.jpeg"
@@ -112,7 +112,7 @@ export default function Slider() {
       <SwiperSlide>
         <Link
           href="/courses/1"
-          className=" group relative block w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
+          className=" group relative block w-55 md:w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
           <div className="relative h-41 overflow-hidden">
             <img
               src="/images/kek.jpeg"
@@ -149,7 +149,7 @@ export default function Slider() {
       <SwiperSlide>
         <Link
           href="/courses/1"
-          className=" group relative block w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
+          className=" group relative block w-55 md:w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
           <div className="relative h-41 overflow-hidden">
             <img
               src="/images/kek.jpeg"
@@ -186,7 +186,7 @@ export default function Slider() {
       <SwiperSlide>
         <Link
           href="/courses/1"
-          className=" group relative block w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
+          className=" group relative block w-55 md:w-70 overflow-hidden rounded-2xl border border-white/8 bg-[#101011]/80 shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-all duration-300 hover:border-[#CD9F63]/40 hover:shadow-[0_15px_45px_rgba(205,159,99,0.12)]">
           <div className="relative h-41 overflow-hidden">
             <img
               src="/images/kek.jpeg"
@@ -220,6 +220,7 @@ export default function Slider() {
           </div>
         </Link>
       </SwiperSlide>
+
     
     </Swiper>
   );
