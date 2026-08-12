@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCartStore } from "@/src/store/useCartStore";
 import {
   RiBookOpenLine,
   RiShoppingBagLine,
@@ -17,21 +18,26 @@ import {
 function Header() {
   const pathName = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // خواندن ایمن اطلاعات کاربر از localStorage بدون نیاز به useEffect و ساختار اضافی
-  const [user, setUser] = useState(() => {
+  // گرفتن تعداد اقلام سبد خرید از Zustand
+  const cart = useCartStore((state) => state.cart);
+  const totalItems = cart.length;
+
+  useEffect(() => {
+    setIsMounted(true);
     if (typeof window !== "undefined") {
       const savedUser = localStorage.getItem("user");
       if (savedUser) {
         try {
-          return JSON.parse(savedUser);
+          setUser(JSON.parse(savedUser));
         } catch (e) {
           console.error("Error parsing user from localStorage", e);
         }
       }
     }
-    return null;
-  });
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -50,7 +56,7 @@ function Header() {
   if (pathName !== "/admin") {
     return (
       <>
-        <header className="w-full h-17.5 flex justify-center items-center bg-[#101011]/95 backdrop-blur-[14px] fixed top-0 z-50 border-b border-[#1E1E1D]">
+        <header className="w-full h-17.5 flex justify-center items-center bg-[#101011]/95 backdrop-blur-[14px] sticky top-0 z-50 border-b border-[#1E1E1D]">
           <div className="w-[85%] flex items-center h-full justify-between">
             {/* Logo */}
             <Link href="/" className="">
@@ -79,21 +85,24 @@ function Header() {
             <div className="flex items-center gap-4">
               <RiSearchLine className="text-2xl text-white cursor-pointer hover:text-[#CD9F63] transition-colors" />
               
+              {/* Cart Icon */}
               <Link href="/cart">
                 <div className="relative p-2">
-                  <span className="px-1.5 py-0.5 absolute -top-1 -right-2 text-xs flex items-center justify-center rounded-full bg-[#CD9F63] text-[#101011]">
-                    10
-                  </span>
+                  {totalItems > 0 && (
+                    <span className="px-1.5 py-0.5 absolute -top-1 -right-2 text-xs flex items-center justify-center rounded-full bg-[#CD9F63] text-[#101011] font-bold">
+                      {totalItems}
+                    </span>
+                  )}
                   <RiShoppingBasketLine className="text-2xl text-white hover:text-[#CD9F63] transition-colors" />
                 </div>
               </Link>
 
               {/* Conditional Auth Section */}
-              {user ? (
+              {isMounted && user ? (
                 <div className="relative">
                   <button
                     onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#151516] px-3 py-2 text-sm text-white transition-all hover:border-[#CD9F63]/50"
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#151516] px-3 py-2 text-sm text-white transition-all hover:border-[#CD9F63]/50 cursor-pointer"
                   >
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#CD9F63]/10 text-[#CD9F63]">
                       <RiUserLine />
@@ -104,7 +113,7 @@ function Header() {
                   </button>
 
                   {dropdownOpen && (
-                    <div className="absolute left-0 mt-2 w-48 rounded-2xl border border-white/10 bg-[#151516] p-2 shadow-2xl backdrop-blur-xl">
+                    <div className="absolute left-0 mt-2 w-48 rounded-2xl border border-white/10 bg-[#151516] p-2 shadow-2xl backdrop-blur-xl z-50">
                       <Link
                         href="/profile"
                         onClick={() => setDropdownOpen(false)}
@@ -116,7 +125,7 @@ function Header() {
                       
                       <button
                         onClick={handleLogout}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-red-400 transition-colors hover:bg-red-500/10"
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-red-400 transition-colors hover:bg-red-500/10 cursor-pointer"
                       >
                         <RiLogoutBoxRLine className="text-base" />
                         خروج از حساب
@@ -129,7 +138,7 @@ function Header() {
                   href="/login"
                   className="hover:bg-[#101011] hover:text-[#CD9F63] hover:border-[#CD9F63] border duration-200 flex justify-center items-center bg-[#CD9F63] text-[#101011] rounded py-2 px-4"
                 >
-                  <span className="text-sm">ورود / ثبت‌نام</span>
+                  <span className="text-sm font-medium">ورود / ثبت‌نام</span>
                 </Link>
               )}
             </div>

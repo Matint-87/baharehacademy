@@ -1,186 +1,129 @@
 "use client";
-import Image from "next/image";
+
 import { useState } from "react";
-import { RiDeleteBin6Line } from "react-icons/ri";
+import Link from "next/link";
+import { useCartStore } from "@/src/store/useCartStore";
+import { FaTrash, FaArrowRight, FaShoppingBasket } from "react-icons/fa";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-function Page() {
-  const [cart, setCart] = useState([
-    {
-      id: 1,
-      title: "پیتزا مخصوص",
-      description: "پیتزا با ژامبون، قارچ، پنیر و سس مخصوص",
-      image:
-        "https://cdn.snappfood.ir/300x200/uploads/images/vendor-cover-app-review/16/09.jpg",
-      price: 120000,
-      discount: 20,
-      qty: 1,
-    },
-    {
-      id: 2,
-      title: "پیتزا قارچ و پنیر",
-      description: "پیتزا با قارچ، پنیر و سس مخصوص",
-      image:
-        "https://cdn.snappfood.ir/300x200/uploads/images/vendor-cover-app-review/16/09.jpg",
-      price: 110000,
-      discount: 15,
-      qty: 1,
-    },
-    {
-      id: 3,
-      title: "پیتزا گوشت و پنیر",
-      description: "پیتزا با گوشت، پنیر و سبزیجات",
-      image:
-        "https://cdn.snappfood.ir/300x200/uploads/images/vendor-cover-app-review/16/09.jpg",
-      price: 150000,
-      discount: 10,
-      qty: 3,
-    },
-  ]);
+export default function CartPage() {
+  const { cart, removeFromCart, clearCart } = useCartStore();
+  const [loading, setLoading] = useState(false);
 
-  const increaseQty = (id) => {
-    setCart(
-      cart.map((item) =>
-        item.id === id ? { ...item, qty: item.qty + 1 } : item
-      )
-    );
-  };
+  // محاسبه جمع کل قیمت‌ها
+  const totalPrice = cart.reduce((acc, item) => acc + item.price, 0);
 
-  const decreaseQty = (id) => {
-    setCart(
-      cart.map((item) =>
-        item.id === id && item.qty > 1 ? { ...item, qty: item.qty - 1 } : item
-      )
-    );
-  };
+  const handleCheckout = async () => {
+    // بررسی اینکه آیا کاربر لاگین کرده است یا خیر
+    const savedUser = localStorage.getItem("user");
+    if (!savedUser) {
+      toast.error("لطفاً ابتدا وارد حساب کاربری خود شوید.", { theme: "dark" });
+      return;
+    }
 
-  const removeItem = (id) => {
-    setCart(cart.filter((item) => item.id !== id));
-  };
+    const user = JSON.parse(savedUser);
+    setLoading(true);
 
-  const getTotal = () => {
-    return cart.reduce(
-      (acc, item) =>
-        acc + (item.price - item.price * (item.discount / 100)) * item.qty,
-      0
-    );
-  };
+    try {
+      // ارسال سفارشات به API ثبت سفارش
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          items: cart.map((item) => item.id), // ارسال لیست شناسه‌های دوره‌ها
+        }),
+      });
 
-  const getMainPrice = () => {
-    return cart.reduce((acc, item) => acc + item.price * item.qty, 0);
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("سفارش شما با موفقیت ثبت شد!", { theme: "dark" });
+        clearCart(); // خالی کردن سبد خرید بعد از ثبت موفق
+      } else {
+        toast.error(data.error || "خطا در ثبت سفارش", { theme: "dark" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("خطای سرور در ثبت سفارش", { theme: "dark" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <>
-      {cart.length === 0 ? (
-        <div className="flex flex-col gap-7 items-center justify-center h-[80vh]">
-          <div className="font-bold text-xl text-[#23254e] capitalize">
-            سبد خرید شما خالی است!
+    <main className="min-h-screen bg-[#0b0b0c] px-4 py-12 text-white">
+      <ToastContainer />
+      <div className="mx-auto max-w-4xl">
+        <h1 className="text-3xl font-bold mb-8 flex items-center gap-3">
+          <FaShoppingBasket className="text-[#CD9F63]" />
+          سبد خرید شما
+        </h1>
+
+        {cart.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 border border-white/10 bg-[#151516]/80 rounded-3xl">
+            <p className="text-gray-400 mb-6">سبد خرید شما خالی است.</p>
+            <Link
+              href="/courses"
+              className="flex items-center gap-2 bg-[#CD9F63] text-[#111] px-6 py-3 rounded-xl font-bold hover:bg-white transition-all"
+            >
+              <span>مشاهده دوره‌ها</span>
+              <FaArrowRight />
+            </Link>
           </div>
-        </div>
-      ) : (
-        <div className="w-full flex justify-center mt-10 h-screen">
-          <div className="w-[75%] flex justify-between p-5">
-            {/* لیست محصولات */}
-            <div className="w-[69%] bg-white border border-gray-300 rounded-xl p-5 flex flex-col gap-4">
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* لیست دوره‌های داخل سبد */}
+            <div className="lg:col-span-2 space-y-4">
               {cart.map((item) => (
                 <div
                   key={item.id}
-                  className="w-full p-3 border-b border-gray-300 flex"
+                  className="flex items-center justify-between border border-white/10 bg-[#151516]/80 p-5 rounded-2xl backdrop-blur-xl"
                 >
-                  <Image
-                    src={item.image}
-                    width={270}
-                    height={180}
-                    className="w-67.5 h-45 object-cover rounded-xl"
-                    alt={item.title}
-                  />
-                  <div className="flex flex-col justify-between p-3 w-full">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h2 className="font-bold text-lg">{item.title}</h2>
-                        <p className="text-sm text-gray-600 mt-2">
-                          {item.description}
-                        </p>
-                      </div>
-                      <RiDeleteBin6Line
-                        className="text-[#E24257] text-xl cursor-pointer"
-                        onClick={() => removeItem(item.id)}
-                      />
-                    </div>
-
-                    <div className="flex justify-between items-center mt-4">
-                      <div className="flex flex-col gap-1 text-sm">
-                        <span className="line-through text-gray-400">
-                          {item.price.toLocaleString()} تومان
-                        </span>
-                        <span className="font-bold text-green-600">
-                          {(item.price - item.price * (item.discount / 100)).toLocaleString()} تومان
-                        </span>
-                        <span className="text-xs text-red-500">
-                          {item.discount}% تخفیف
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center border border-gray-300 rounded-md">
-                          <button
-                            className="p-2 text-gray-600 hover:text-gray-900"
-                            onClick={() => decreaseQty(item.id)}
-                          >
-                            -
-                          </button>
-                          <span className="px-4 py-2 text-gray-900 font-medium">
-                            {item.qty}
-                          </span>
-                          <button
-                            className="p-2 text-gray-600 hover:text-gray-900"
-                            onClick={() => increaseQty(item.id)}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                  <div>
+                    <h3 className="font-bold text-lg mb-1">{item.title}</h3>
+                    <p className="text-xs text-gray-400">مدرس: {item.instructor}</p>
+                    <span className="text-sm font-bold text-[#CD9F63] mt-3 inline-block">
+                      {item.price.toLocaleString()} تومان
+                    </span>
                   </div>
+                  <button
+                    onClick={() => removeFromCart(item.id)}
+                    className="p-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
+                    title="حذف دوره"
+                  >
+                    <FaTrash />
+                  </button>
                 </div>
               ))}
             </div>
 
-            {/* خلاصه سفارش */}
-            <div className="w-[30%] rounded-xl p-5 border border-gray-300 h-fit">
-              <h1 className="text-xl font-bold text-[#2b2b2b]">خلاصه سفارش</h1>
-              <div className="flex flex-col gap-3 mt-5 text-sm">
-                <div className="flex justify-between">
-                  <span>قیمت اصلی</span>
-                  <span>{getMainPrice().toLocaleString()} تومان</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>تخفیف</span>
-                  <span>{(getMainPrice() - getTotal()).toLocaleString()} تومان</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>هزینه ارسال</span>
-                  <span>رایگان</span>
-                </div>
+            {/* فاکتور و نهایی کردن خرید */}
+            <div className="border border-white/10 bg-[#151516]/80 p-6 rounded-3xl h-fit backdrop-blur-xl">
+              <h2 className="text-xl font-bold mb-4 border-b border-white/10 pb-4">
+                خلاصه سفارش
+              </h2>
+              <div className="flex justify-between mb-6 text-sm text-gray-300">
+                <span>مجموع اقلام:</span>
+                <span>{cart.length} دوره</span>
+              </div>
+              <div className="flex justify-between mb-8 text-lg font-bold">
+                <span>مبلغ قابل پرداخت:</span>
+                <span className="text-[#CD9F63]">{totalPrice.toLocaleString()} تومان</span>
               </div>
 
-              <div className="w-full h-0.5 bg-[#e3e3e3] my-5 rounded"></div>
-
-              <div className="flex flex-col gap-3 mt-5 text-sm">
-                <div className="flex justify-between font-bold text-lg">
-                  <span>قیمت نهایی</span>
-                  <span>{getTotal().toLocaleString()} تومان</span>
-                </div>
-                <button className="border border-[#E24257] bg-white text-[#E24257] rounded p-3 hover:bg-[#E24257] hover:text-white duration-300">
-                  تایید و تکمیل سفارش
-                </button>
-              </div>
+              <button
+                onClick={handleCheckout}
+                disabled={loading}
+                className="w-full bg-[#CD9F63] text-[#111] py-3 rounded-xl font-bold hover:bg-white transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? "در حال ثبت سفارش..." : "تایید و ثبت نهایی سفارش"}
+              </button>
             </div>
           </div>
-        </div>
-      )}
-    </>
+        )}
+      </div>
+    </main>
   );
 }
-
-export default Page;

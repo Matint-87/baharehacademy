@@ -1,166 +1,182 @@
 "use client";
-import { useState } from "react";
-import ProductItems from "@/src/components/ProductItems";
-import { FiSearch, FiFilter } from "react-icons/fi";
 
-function Page() {
-  const [search, setSearch] = useState("");
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [priceRange, setPriceRange] = useState({ min: "", max: "" });
-  const [sortBy, setSortBy] = useState("newest");
+import { useState, useEffect } from "react";
+import { useCartStore } from "@/src/store/useCartStore";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { FaShoppingBasket, FaPlus, FaMinus } from "react-icons/fa";
 
-  const categories = [
-    { id: 1, name: "سوسیس", count: 24 },
-    { id: 2, name: "کالباس", count: 24 },
-    { id: 3, name: "شیرینی ها", count: 18 },
-    { id: 4, name: "کیک ها", count: 12 },
-  ];
+export default function ProductsPage() {
+  const [products, setProducts] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [quantities, setQuantities] = useState({});
 
-  const handleCategoryChange = (categoryId) => {
-    setSelectedCategories(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
+  const addToCart = useCartStore((state) => state.addToCart);
+
+  // پیاده‌سازی ایمن درخواست داده بدون خطای رندرهای زنجیره‌ای
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchProducts() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/products?page=${page}`);
+        const data = await res.json();
+        
+        if (isMounted && data.success) {
+          setProducts((prev) => {
+            const updatedProducts = page === 1 ? data.products : [...prev, ...data.products];
+            
+            // مقداردهی اولیه وزنی برای محصولات جدید
+            setQuantities((prevQtys) => {
+              const initialQtys = { ...prevQtys };
+              data.products.forEach((p) => {
+                if (!initialQtys[p.id]) initialQtys[p.id] = 250;
+              });
+              return initialQtys;
+            });
+
+            return updatedProducts;
+          });
+          setHasMore(data.hasMore);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    fetchProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [page]);
+
+  // تغییر وزن (افزایش یا کاهش)
+  const handleQuantityChange = (id, step, delta) => {
+    setQuantities((prev) => {
+      const current = prev[id] || 250;
+      const updated = current + delta * (step || 100);
+      return { ...prev, [id]: updated > 0 ? updated : (step || 100) };
+    });
   };
 
-  const clearFilters = () => {
-    setSearch("");
-    setSelectedCategories([]);
-    setPriceRange({ min: "", max: "" });
-    setSortBy("newest");
+  // افزودن به سبد خرید
+  const handleAddToCart = (product) => {
+    const qty = quantities[product.id] || 250;
+    const calculatedPrice = (product.pricePerUnit / 1000) * qty;
+
+    const cartItem = {
+      id: `${product.id}-${qty}`,
+      title: `${product.title} (${qty} گرم)`,
+      price: Math.round(calculatedPrice),
+      instructor: product.category,
+      quantity: qty,
+    };
+
+    const res = addToCart(cartItem);
+    if (res.success) {
+      toast.success(`${product.title} (${qty} گرم) به سبد خرید اضافه شد!`, { theme: "dark" });
+    } else {
+      toast.info("این محصول با این مقدار در سبد خرید موجود است.", { theme: "dark" });
+    }
   };
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">محصولات</h1>
-          <button
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className="lg:hidden flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
-          >
-            <FiFilter className="w-5 h-5" />
-            <span>فیلتر</span>
-          </button>
+    <main className="min-h-screen bg-[#0b0b0c] px-4 py-12 text-white">
+      <ToastContainer />
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-12 text-center">
+          <h1 className="text-3xl font-bold text-white md:text-4xl">محصولات پروتئینی تازه</h1>
+          <p className="mt-3 text-sm text-gray-400">
+            انواع کالباس، سوسیس و ناگت ارگانیک - انتخاب وزن به دلخواه شما
+          </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className={`
-            lg:w-80 lg:block
-            ${isFilterOpen ? 'block' : 'hidden'}
-            fixed lg:relative inset-0 z-50 lg:z-auto
-            bg-white lg:bg-transparent
-            p-4 lg:p-0
-            overflow-y-auto
-          `}>
-            <div className="flex justify-between items-center mb-4 lg:hidden">
-              <h2 className="font-bold text-lg">فیلترها</h2>
-              <button
-                onClick={() => setIsFilterOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                ✕
-              </button>
-            </div>
+        {loading && products.length === 0 ? (
+          <div className="text-center py-20 text-gray-400 text-sm">در حال بارگذاری محصولات...</div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-20 text-gray-400 text-sm">هنوز محصولی ثبت نشده است.</div>
+        ) : (
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {products.map((product) => {
+              const currentQty = quantities[product.id] || 250;
+              const currentPrice = Math.round((product.pricePerUnit / 1000) * currentQty);
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-              {/* Filter Header */}
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                  <FiFilter className="w-5 h-5" />
-                  فیلترها
-                </h2>
-              </div>
-
-              {/* Categories Filter */}
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-700 mb-3">دسته‌بندی</h3>
-                <div className="space-y-2">
-                  {categories.map((category) => (
-                    <label
-                      key={category.id}
-                      className="flex items-center justify-between cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedCategories.includes(category.id)}
-                          onChange={() => handleCategoryChange(category.id)}
-                          className="w-4 h-4 text-[#E24257] rounded border-gray-300 focus:ring-[#E24257]"
-                        />
-                        <span className="text-gray-700 group-hover:text-[#E24257] transition-colors">
-                          {category.name}
-                        </span>
-                      </div>
-                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                        {category.count}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Clear Filters Button */}
-              <div className="p-4">
-                <button
-                  onClick={clearFilters}
-                  className="w-full cursor-pointer px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              return (
+                <div
+                  key={product.id}
+                  className="flex flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-[#151516]/80 p-5 backdrop-blur-xl"
                 >
-                  پاک کردن فیلترها
-                </button>
-              </div>
-            </div>
-          </div>
+                  <div>
+                    <div className="h-48 w-full bg-gray-800 rounded-2xl mb-4 flex items-center justify-center text-gray-500 font-bold">
+                      تصویر محصول
+                    </div>
+                    <span className="text-xs text-[#CD9F63] bg-[#CD9F63]/10 px-3 py-1 rounded-full">
+                      {product.category}
+                    </span>
+                    <h2 className="text-lg font-bold text-white mt-3">{product.title}</h2>
+                    <p className="mt-2 text-xs text-gray-400 line-clamp-2">{product.description}</p>
+                  </div>
 
-          {/* Main Content */}
-          <div className="flex-1">
-            {/* Search Bar with Sort and Count */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-6">
-              <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <div className="flex-1 w-full">
-                  <div className="relative">
-                    <FiSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      placeholder="جستجوی محصولات..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E24257] focus:border-transparent"
-                    />
+                  <div className="mt-6 border-t border-white/10 pt-4">
+                    <div className="flex items-center justify-between mb-4 bg-white/5 p-2 rounded-xl">
+                      <span className="text-xs text-gray-300">مقدار (گرم):</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleQuantityChange(product.id, product.step, -1)}
+                          className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer"
+                        >
+                          <FaMinus />
+                        </button>
+                        <span className="text-sm font-bold w-12 text-center">{currentQty} گ</span>
+                        <button
+                          onClick={() => handleQuantityChange(product.id, product.step, 1)}
+                          className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer"
+                        >
+                          <FaPlus />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs text-gray-400">قیمت نهایی:</span>
+                      <span className="text-base font-bold text-[#CD9F63]">
+                        {currentPrice.toLocaleString()} تومان
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handleAddToCart(product)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#CD9F63] py-3 text-xs font-bold text-[#111] transition-all hover:bg-white cursor-pointer"
+                    >
+                      <FaShoppingBasket />
+                      <span>افزودن به سبد خرید</span>
+                    </button>
                   </div>
                 </div>
-                
-                {/* Results Count */}
-                <div className="text-sm text-gray-600 whitespace-nowrap">
-                  <span className="font-medium text-gray-900">24</span> محصول
-                </div>
-              </div>
-            </div>
-
-            {/* Products Grid */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-              <ProductItems 
-                // search={search}
-                // categories={selectedCategories}
-                // priceRange={priceRange}
-                // sortBy={sortBy}
-              />
-            </div>
+              );
+            })}
           </div>
-        </div>
+        )}
 
-        {/* Overlay for Mobile Filter */}
-        {isFilterOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setIsFilterOpen(false)}
-          />
+        {/* دکمه بارگذاری بیشتر محصولات */}
+        {hasMore && products.length > 0 && (
+          <div className="mt-12 flex justify-center">
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={loading}
+              className="rounded-xl border border-[#CD9F63] px-8 py-3 text-sm text-[#CD9F63] transition-all hover:bg-[#CD9F63] hover:text-[#111] cursor-pointer disabled:opacity-50"
+            >
+              {loading ? "در حال بارگذاری..." : "مشاهده محصولات بیشتر"}
+            </button>
+          </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
-
-export default Page;
