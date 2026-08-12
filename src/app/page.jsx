@@ -7,12 +7,10 @@ import Sliders from "../components/Sliders";
 export default function Home() {
   return (
     <>
-      <Header/>
       <Hero/>
       <Sliders/>
       <Rezome/>
       <Sliders/>
-      <Footer/>
     </>
   );
 }

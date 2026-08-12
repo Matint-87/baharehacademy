@@ -1,3 +1,4 @@
+import Link from "next/link";
 import React from "react";
 
 export const metadata = {
@@ -8,10 +9,10 @@ export const metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="bg-white">
+    <main className="">
 
       {/* Hero Section */}
-      <section className="bg-gray-50 text-gray-700 py-20 px-6">
+      <section className="text-gray-400 py-20 px-6">
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
             درباره آکادمی آموزش آشپزی و شیرینی‌پزی
@@ -28,10 +29,10 @@ export default function AboutPage() {
         <div className="max-w-5xl mx-auto space-y-10">
 
           <div>
-            <h2 className="text-2xl font-semibold mb-4">
+            <h2 className="text-white text-2xl font-semibold mb-4">
               رسالت ما
             </h2>
-            <p className="text-gray-700 leading-8">
+            <p className="text-gray-400 leading-8">
               هدف ما تربیت هنرجویان حرفه‌ای در حوزه شیرینی‌پزی، کیک‌های مجلل،
               آشپزی ملل و تولید فرآورده‌های گوشتی است؛ به‌گونه‌ای که بتوانند
               کسب‌وکار شخصی خود را راه‌اندازی کنند و وارد بازار کار شوند.
@@ -39,10 +40,10 @@ export default function AboutPage() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-semibold mb-4">
+            <h2 className="text-white text-2xl font-semibold mb-4">
               حوزه‌های آموزشی
             </h2>
-            <ul className="grid md:grid-cols-2 gap-4 text-gray-700">
+            <ul className="grid md:grid-cols-2 gap-4 text-gray-400">
               <li>✔ آموزش شیرینی‌پزی خانگی و حرفه‌ای</li>
               <li>✔ کیک‌های مجلل عروسی و کیک‌های خامه‌ای</li>
               <li>✔ آموزش فوندانت و دکور کیک</li>
@@ -55,10 +56,10 @@ export default function AboutPage() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-semibold mb-4">
+            <h2 className="text-white text-2xl font-semibold mb-4">
               چرا این آکادمی؟
             </h2>
-            <p className="text-gray-700 leading-8">
+            <p className="text-gray-400 leading-8">
               ترکیب تجربه عملی در آشپزخانه صنعتی، دانش تخصصی، آموزش کاربردی و
               پشتیبانی هنرجویان پس از دوره، باعث شده هنرجویان بسیاری بتوانند
               برند شخصی خود را راه‌اندازی کنند.
@@ -69,18 +70,18 @@ export default function AboutPage() {
       </section>
 
       {/* Instructor Section */}
-      <section className="bg-gray-50 py-16 px-6">
+      <section className=" py-16 px-6">
         <div className="max-w-4xl mx-auto">
 
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-white text-3xl font-bold text-center mb-12">
             مدرسین مجموعه
           </h2>
 
-          <div className="bg-white shadow-lg rounded-2xl p-8 text-center">
-            <h3 className="text-2xl font-semibold mb-2">
+          <div className="bg-[#101011]/10  shadow-lg rounded-2xl p-8 text-center">
+            <h3 className="text-white text-2xl font-semibold mb-2">
               بهاره اسفندیاری
             </h3>
-            <p className="text-gray-600 leading-7">
+            <p className="text-gray-400 leading-7">
               مربی و مدرس حرفه‌ای آشپزی و شیرینی‌پزی با سابقه برگزاری
               کارگاه‌های تخصصی از سال ۱۳۹۳ تا کنون. مدرس دوره‌های کیک‌های
               مجلل، شیرینی‌پزی حرفه‌ای، آشپزی ملل و فرآورده‌های گوشتی.
@@ -92,18 +93,15 @@ export default function AboutPage() {
 
       {/* CTA */}
       <section className="py-16 px-6 text-center">
-        <h2 className="text-2xl font-semibold mb-4">
+        <h2 className="text-white text-2xl font-semibold mb-4">
           آماده یادگیری مهارت‌های تخصصی هستید؟
         </h2>
-        <p className="text-gray-600 mb-6">
+        <p className="text-gray-400 mb-6">
           برای مشاهده دوره‌ها و ثبت‌نام آنلاین، وارد بخش دوره‌ها شوید.
         </p>
-        <a
-          href="/courses"
-          className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 rounded-full transition"
-        >
+        <Link href="/courses" className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 rounded-full transition">
           مشاهده دوره‌ها
-        </a>
+        </Link>
       </section>
 
     </main>

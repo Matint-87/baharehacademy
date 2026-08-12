@@ -1,6 +1,8 @@
 import "./globals.css";
-import { Footer } from "../components/Footer";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 export const metadata = {
   title: "cooking academy",
@@ -10,10 +12,16 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" dir="rtl">
-      <body
-        className="font-[Number] bg-[#101011]"
-      >
+      <body className="font-[Number] bg-[#101011]">
+        <Header/>
         {children}
+        <Footer/>
+        <ToastContainer
+          position="bottom-left"
+          autoClose={3000}
+          hideProgressBar={false}
+          theme="dark"
+        />
       </body>
     </html>
   );
