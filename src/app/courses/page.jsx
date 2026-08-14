@@ -13,15 +13,17 @@ export default function CoursesPage() {
   // استفاده از روش مدرن‌تر برای بارگذاری صفحه اول و تغییرات صفحه بدون اخطار Effect
   useEffect(() => {
     let isMounted = true;
-    
+
     async function fetchData() {
       setLoading(true);
       try {
         const response = await fetch(`/api/courses?page=${page}`);
         const data = await response.json();
-        
+
         if (isMounted && data.success) {
-          setCourses((prev) => (page === 1 ? data.courses : [...prev, ...data.courses]));
+          setCourses((prev) =>
+            page === 1 ? data.courses : [...prev, ...data.courses],
+          );
           setHasMore(data.hasMore);
         }
       } catch (error) {
@@ -41,10 +43,11 @@ export default function CoursesPage() {
   return (
     <main className="min-h-screen bg-[#0b0b0c] px-4 py-12 text-white">
       <div className="mx-auto max-w-6xl">
-        
         {/* هدر صفحه */}
         <div className="mb-12 text-center">
-          <h1 className="text-3xl font-bold text-white md:text-4xl">دوره‌های تخصصی آشپزی</h1>
+          <h1 className="text-3xl font-bold text-white md:text-4xl">
+            دوره‌های تخصصی آشپزی
+          </h1>
           <p className="mt-3 text-sm text-gray-400">
             مهارت‌های آشپزی خود را با اساتید برتر آکادمی به سطح حرفه‌ای برسانید.
           </p>
@@ -62,9 +65,9 @@ export default function CoursesPage() {
         ) : (
           /* لیست کارت‌های دوره */
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {courses.map((course) => (
+            {courses.map((course, index) => (
               <div
-                key={course.id}
+                key={`${course.id}-${index}`}
                 className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-[#151516]/80 p-5 backdrop-blur-xl transition-all hover:border-[#CD9F63]/50 hover:shadow-xl hover:shadow-black/40"
               >
                 <div>
@@ -93,8 +96,12 @@ export default function CoursesPage() {
 
                 <div>
                   <div className="my-4 flex items-center justify-between border-t border-white/10 pt-4 text-xs text-gray-400">
-                    <span className="flex items-center gap-1"><FaUserGraduate /> {course.instructor}</span>
-                    <span className="flex items-center gap-1"><FaClock /> {course.duration}</span>
+                    <span className="flex items-center gap-1">
+                      <FaUserGraduate /> {course.instructor}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FaClock /> {course.duration}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -127,7 +134,6 @@ export default function CoursesPage() {
             </button>
           </div>
         )}
-
       </div>
     </main>
   );

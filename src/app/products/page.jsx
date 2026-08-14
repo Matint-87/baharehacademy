@@ -5,6 +5,7 @@ import { useCartStore } from "@/src/store/useCartStore";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { FaShoppingBasket, FaPlus, FaMinus } from "react-icons/fa";
+import Link from "next/link";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -15,7 +16,6 @@ export default function ProductsPage() {
 
   const addToCart = useCartStore((state) => state.addToCart);
 
-  // پیاده‌سازی ایمن درخواست داده بدون خطای رندرهای زنجیره‌ای
   useEffect(() => {
     let isMounted = true;
 
@@ -24,12 +24,12 @@ export default function ProductsPage() {
       try {
         const res = await fetch(`/api/products?page=${page}`);
         const data = await res.json();
-        
+
         if (isMounted && data.success) {
           setProducts((prev) => {
-            const updatedProducts = page === 1 ? data.products : [...prev, ...data.products];
-            
-            // مقداردهی اولیه وزنی برای محصولات جدید
+            const updatedProducts =
+              page === 1 ? data.products : [...prev, ...data.products];
+
             setQuantities((prevQtys) => {
               const initialQtys = { ...prevQtys };
               data.products.forEach((p) => {
@@ -56,16 +56,14 @@ export default function ProductsPage() {
     };
   }, [page]);
 
-  // تغییر وزن (افزایش یا کاهش)
   const handleQuantityChange = (id, step, delta) => {
     setQuantities((prev) => {
       const current = prev[id] || 250;
       const updated = current + delta * (step || 100);
-      return { ...prev, [id]: updated > 0 ? updated : (step || 100) };
+      return { ...prev, [id]: updated > 0 ? updated : step || 100 };
     });
   };
 
-  // افزودن به سبد خرید
   const handleAddToCart = (product) => {
     const qty = quantities[product.id] || 250;
     const calculatedPrice = (product.pricePerUnit / 1000) * qty;
@@ -80,9 +78,13 @@ export default function ProductsPage() {
 
     const res = addToCart(cartItem);
     if (res.success) {
-      toast.success(`${product.title} (${qty} گرم) به سبد خرید اضافه شد!`, { theme: "dark" });
+      toast.success(`${product.title} (${qty} گرم) به سبد خرید اضافه شد!`, {
+        theme: "dark",
+      });
     } else {
-      toast.info("این محصول با این مقدار در سبد خرید موجود است.", { theme: "dark" });
+      toast.info("این محصول با این مقدار در سبد خرید موجود است.", {
+        theme: "dark",
+      });
     }
   };
 
@@ -91,21 +93,29 @@ export default function ProductsPage() {
       <ToastContainer />
       <div className="mx-auto max-w-6xl">
         <div className="mb-12 text-center">
-          <h1 className="text-3xl font-bold text-white md:text-4xl">محصولات پروتئینی تازه</h1>
+          <h1 className="text-3xl font-bold text-white md:text-4xl">
+            محصولات پروتئینی تازه
+          </h1>
           <p className="mt-3 text-sm text-gray-400">
             انواع کالباس، سوسیس و ناگت ارگانیک - انتخاب وزن به دلخواه شما
           </p>
         </div>
 
         {loading && products.length === 0 ? (
-          <div className="text-center py-20 text-gray-400 text-sm">در حال بارگذاری محصولات...</div>
+          <div className="text-center py-20 text-gray-400 text-sm">
+            در حال بارگذاری محصولات...
+          </div>
         ) : products.length === 0 ? (
-          <div className="text-center py-20 text-gray-400 text-sm">هنوز محصولی ثبت نشده است.</div>
+          <div className="text-center py-20 text-gray-400 text-sm">
+            هنوز محصولی ثبت نشده است.
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => {
               const currentQty = quantities[product.id] || 250;
-              const currentPrice = Math.round((product.pricePerUnit / 1000) * currentQty);
+              const currentPrice = Math.round(
+                (product.pricePerUnit / 1000) * currentQty
+              );
 
               return (
                 <div
@@ -113,41 +123,59 @@ export default function ProductsPage() {
                   className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-[#151516]/80 p-5 backdrop-blur-xl"
                 >
                   <div>
-                    {/* نمایش تصویر محصول */}
-                    <div className="relative mb-4 h-48 w-full overflow-hidden rounded-2xl bg-gray-800">
-                      {product.image ? (
-                        <img
-                          src={product.image}
-                          alt={product.title}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-600 font-bold">
-                          بدون تصویر
-                        </div>
-                      )}
-                    </div>
+                    {/* لینک فقط روی تصویر و عنوان برای رفتن به جزئیات */}
+                    <Link href={`/products/${product.id}`} className="block">
+                      <div className="relative mb-4 h-48 w-full overflow-hidden rounded-2xl bg-gray-800">
+                        {product.image ? (
+                          <img
+                            src={product.image}
+                            alt={product.title}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-gray-600 font-bold">
+                            بدون تصویر
+                          </div>
+                        )}
+                      </div>
+                    </Link>
 
                     <span className="text-xs text-[#CD9F63] bg-[#CD9F63]/10 px-3 py-1 rounded-full">
                       {product.category}
                     </span>
-                    <h2 className="text-lg font-bold text-white mt-3">{product.title}</h2>
-                    <p className="mt-2 text-xs text-gray-400 line-clamp-2">{product.description}</p>
+                    
+                    <Link href={`/products/${product.id}`} className="block">
+                      <h2 className="text-lg font-bold text-white mt-3 hover:text-[#CD9F63] transition-colors">
+                        {product.title}
+                      </h2>
+                    </Link>
+                    
+                    <p className="mt-2 text-xs text-gray-400 line-clamp-2">
+                      {product.description}
+                    </p>
                   </div>
 
                   <div className="mt-6 border-t border-white/10 pt-4">
                     <div className="flex items-center justify-between mb-4 bg-white/5 p-2 rounded-xl">
-                      <span className="text-xs text-gray-300">مقدار (گرم):</span>
+                      <span className="text-xs text-gray-300">
+                        مقدار (گرم):
+                      </span>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => handleQuantityChange(product.id, product.step, -1)}
+                          onClick={() =>
+                            handleQuantityChange(product.id, product.step, -1)
+                          }
                           className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer"
                         >
                           <FaMinus />
                         </button>
-                        <span className="text-sm font-bold w-12 text-center">{currentQty} گ</span>
+                        <span className="text-sm font-bold w-12 text-center">
+                          {currentQty} گ
+                        </span>
                         <button
-                          onClick={() => handleQuantityChange(product.id, product.step, 1)}
+                          onClick={() =>
+                            handleQuantityChange(product.id, product.step, 1)
+                          }
                           className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer"
                         >
                           <FaPlus />
@@ -156,7 +184,9 @@ export default function ProductsPage() {
                     </div>
 
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs text-gray-400">قیمت نهایی:</span>
+                      <span className="text-xs text-gray-400">
+                        قیمت نهایی:
+                      </span>
                       <span className="text-base font-bold text-[#CD9F63]">
                         {currentPrice.toLocaleString()} تومان
                       </span>
@@ -176,7 +206,6 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* دکمه بارگذاری بیشتر محصولات */}
         {hasMore && products.length > 0 && (
           <div className="mt-12 flex justify-center">
             <button

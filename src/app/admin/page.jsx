@@ -38,8 +38,14 @@ export default function Page() {
     instructor: "",
     description: "",
     image: "",
-    email: "",
-    name: "",
+    // فیلدهای جدید مربوط به مدل User
+    phoneNumber: "",
+    firstName: "",
+    lastName: "",
+    addressDetail: "",
+    postalCode: "",
+    isAdmin: false,
+    isVerified: false,
     // فیلدهای مخصوص دستور پخت
     ingredientsText: "", // هر خط = یک ماده لازم
     instructions: "",
@@ -56,9 +62,6 @@ export default function Page() {
   const endpointOf = (section) => `/api/${section}`;
   const resultKeyOf = (section) => section; // users -> json.users, products -> json.products و ...
 
-  // درخواست‌ها با credentials: "include" میره تا کوکی JWT (httpOnly) خودکار فرستاده بشه.
-  // اگه توکن رو تو localStorage نگه می‌داری، اینجا باید هدر Authorization اضافه کنی:
-  // headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
   const fetchData = useCallback(async (section, pageNum, append = false) => {
     setLoading(true);
     try {
@@ -126,15 +129,16 @@ export default function Page() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (saving) return; // جلوگیری از دابل کلیک روی دکمه ذخیره
+    if (saving) return;
     setSaving(true);
 
     try {
       const endpoint = endpointOf(activeSection);
       const method = editItem ? "PUT" : "POST";
 
-      // برای دستور پخت، ماده‌های لازم رو از متن چندخطی به آرایه تبدیل می‌کنیم
       let payload = { ...formData };
+
+      // تنظیمات خاص برای دستور پخت
       if (activeSection === "recipe") {
         const ingredients = formData.ingredientsText
           .split("\n")
@@ -148,7 +152,20 @@ export default function Page() {
           prepTime: formData.prepTime,
           image: formData.image,
         };
+      } 
+      // تنظیمات خاص برای کاربران
+      else if (activeSection === "users") {
+        payload = {
+          phoneNumber: formData.phoneNumber,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          addressDetail: formData.addressDetail,
+          postalCode: formData.postalCode,
+          isAdmin: formData.isAdmin,
+          isVerified: formData.isVerified,
+        };
       }
+
       if (editItem) payload.id = editItem.id;
 
       const res = await fetch(endpoint, {
@@ -201,7 +218,8 @@ export default function Page() {
     setEditItem(null);
     setFormData({
       title: "", category: "", pricePerUnit: "", price: "", duration: "",
-      instructor: "", description: "", image: "", email: "", name: "",
+      instructor: "", description: "", image: "", phoneNumber: "", firstName: "",
+      lastName: "", addressDetail: "", postalCode: "", isAdmin: false, isVerified: false,
       ingredientsText: "", instructions: "", prepTime: "",
     });
     setModalOpen(true);
@@ -218,8 +236,13 @@ export default function Page() {
       instructor: item.instructor || "",
       description: item.description || "",
       image: item.image || "",
-      email: item.email || "",
-      name: item.name || "",
+      phoneNumber: item.phoneNumber || "",
+      firstName: item.firstName || "",
+      lastName: item.lastName || "",
+      addressDetail: item.addressDetail || "",
+      postalCode: item.postalCode || "",
+      isAdmin: Boolean(item.isAdmin),
+      isVerified: Boolean(item.isVerified),
       ingredientsText: Array.isArray(item.ingredients) ? item.ingredients.join("\n") : "",
       instructions: item.instructions || "",
       prepTime: item.prepTime || "",
@@ -232,7 +255,7 @@ export default function Page() {
 
     return (
       <div className="space-y-8 pb-20">
-        {/* آمار کلی - حالا از تعداد واقعی سرور (counts) میاد، نه طول آرایه‌ی لود شده */}
+        {/* آمار کلی */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -278,14 +301,14 @@ export default function Page() {
                 <thead>
                   <tr className="border-b border-white/10 text-xs text-gray-400 bg-white/5">
                     <th className="p-4">تصویر</th>
-                    <th className="p-4">عنوان / نام</th>
+                    <th className="p-4">عنوان / نام کاربر</th>
                     <th className="p-4">جزئیات</th>
                     <th className="p-4 text-center">عملیات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm">
                   {currentList.map((item, index) => (
-                    <tr key={item.id || index} className="hover:bg-white/5 transition-all">
+                    <tr key={`${item.id}-${index}`} className="hover:bg-white/5 transition-all">
                       <td className="p-4">
                         {item.image ? (
                           <img src={item.image} alt="" className="w-10 h-10 rounded-lg object-cover border border-white/10" />
@@ -293,11 +316,17 @@ export default function Page() {
                           <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-xs text-gray-500">بدون عکس</div>
                         )}
                       </td>
-                      <td className="p-4 font-medium">{item.title || item.name || item.email || "بدون عنوان"}</td>
+                      <td className="p-4 font-medium">
+                        {activeSection === "users" 
+                          ? `${item.firstName || ""} ${item.lastName || ""}`.trim() || item.phoneNumber || "بدون نام"
+                          : (item.title || "بدون عنوان")}
+                      </td>
                       <td className="p-4 text-xs text-gray-400">
-                        {item.price || item.pricePerUnit
-                          ? `${Number(item.price || item.pricePerUnit).toLocaleString()} تومان`
-                          : (item.category || item.duration || item.prepTime || "-")}
+                        {activeSection === "users" 
+                          ? item.phoneNumber 
+                          : (item.price || item.pricePerUnit
+                            ? `${Number(item.price || item.pricePerUnit).toLocaleString()} تومان`
+                            : (item.category || item.duration || item.prepTime || "-"))}
                       </td>
                       <td className="p-4 flex items-center justify-center gap-2">
                         <button
@@ -318,7 +347,6 @@ export default function Page() {
                 </tbody>
               </table>
 
-              {/* دکمه نمایش بیشتر - حالا صفحه‌ی بعدی رو واقعاً از سرور می‌گیره */}
               {hasMore && (
                 <div className="flex justify-center p-4 border-t border-white/10 bg-white/5">
                   <button
@@ -338,7 +366,7 @@ export default function Page() {
         {/* مدال افزودن / ویرایش */}
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-[#151516] border border-white/10 p-6 rounded-3xl w-full max-w-lg text-white my-8">
+            <div className="bg-[#151516] border border-white/10 p-6 rounded-3xl w-full max-w-lg text-white my-8 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-3">
                 <h2 className="text-lg font-bold">{editItem ? "ویرایش مورد" : "افزودن مورد جدید"}</h2>
                 <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-white cursor-pointer"><FaTimes /></button>
@@ -348,12 +376,34 @@ export default function Page() {
                 {activeSection === "users" ? (
                   <>
                     <div>
-                      <label className="text-xs text-gray-400 block mb-1">نام کاربر</label>
-                      <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" required />
+                      <label className="text-xs text-gray-400 block mb-1">شماره تلفن</label>
+                      <input type="text" value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" required />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-400 block mb-1">ایمیل</label>
-                      <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" required />
+                      <label className="text-xs text-gray-400 block mb-1">نام</label>
+                      <input type="text" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">نام خانوادگی</label>
+                      <input type="text" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">جزئیات آدرس</label>
+                      <textarea value={formData.addressDetail} onChange={(e) => setFormData({ ...formData, addressDetail: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" rows="2" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">کد پستی</label>
+                      <input type="text" value={formData.postalCode} onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" />
+                    </div>
+                    <div className="flex items-center gap-6 pt-2">
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={formData.isAdmin} onChange={(e) => setFormData({ ...formData, isAdmin: e.target.checked })} className="accent-[#CD9F63]" />
+                        مدیر سیستم (Admin)
+                      </label>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={formData.isVerified} onChange={(e) => setFormData({ ...formData, isVerified: e.target.checked })} className="accent-[#CD9F63]" />
+                        تایید شده (Verified)
+                      </label>
                     </div>
                   </>
                 ) : activeSection === "recipe" ? (

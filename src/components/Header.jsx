@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCartStore } from "@/src/store/useCartStore";
 import {
   RiBookOpenLine,
@@ -13,14 +13,23 @@ import {
   RiSearchLine,
   RiUserLine,
   RiLogoutBoxRLine,
+  RiCloseLine,
 } from "react-icons/ri";
 
 function Header() {
   const pathName = usePathname();
+  const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // استیت‌های مربوط به مدال و جستجوی پیشرفته
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState({ courses: [], products: [], recipe: [] });
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchInputRef = useRef(null);
 
   // گرفتن تعداد اقلام سبد خرید از Zustand
   const cart = useCartStore((state) => state.cart);
@@ -40,13 +49,49 @@ function Header() {
     }
   }, []);
 
+  // فوکوس خودکار روی اینپوت سرچ وقتی مدال باز میشه
+  useEffect(() => {
+    if (searchModalOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current.focus();
+      }, 100);
+    }
+  }, [searchModalOpen]);
+
+  // منطق جستجوی زنده (Live Search) با دیباونس
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults({ courses: [], products: [], recipe: [] });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        const data = await res.json();
+        if (data.success) {
+          setSearchResults({
+            courses: data.courses || [],
+            products: data.products || [],
+            recipe: data.recipe || [],
+          });
+        }
+      } catch (err) {
+        console.error("Search error:", err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const handleLogout = async () => {
     setLoggingOut(true);
     setDropdownOpen(false);
 
     try {
-      // مهم: باید کوکی httpOnly سمت سرور هم پاک بشه، وگرنه کاربر عملاً
-      // همچنان لاگین می‌مونه (پاک کردن فقط localStorage کافی نیست)
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (e) {
       console.error("Error during logout:", e);
@@ -95,7 +140,14 @@ function Header() {
 
             {/* Actions */}
             <div className="flex items-center gap-4">
-              <RiSearchLine className="text-2xl text-white cursor-pointer hover:text-[#CD9F63] transition-colors" />
+              {/* کلیک روی آیکون سرچ برای باز کردن مدال جستجو */}
+              <button
+                onClick={() => setSearchModalOpen(true)}
+                className="text-2xl text-white cursor-pointer hover:text-[#CD9F63] transition-colors p-1 bg-transparent border-none"
+                title="جستجو"
+              >
+                <RiSearchLine />
+              </button>
               
               {/* Cart Icon */}
               <Link href="/cart">
@@ -157,6 +209,148 @@ function Header() {
             </div>
           </div>
         </header>
+
+        {/* مدال جستجوی پیشرفته و سراسری */}
+        {searchModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-md pt-20 px-4">
+            <div className="bg-[#151516] border border-white/10 rounded-3xl w-full max-w-2xl text-white overflow-hidden shadow-2xl">
+              {/* هدر مدال و اینپوت سرچ */}
+              <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-white/5">
+                <RiSearchLine className="text-xl text-[#CD9F63]" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="جستجو در محصولات، دوره‌ها و دستور پخت‌ها..."
+                  className="w-full bg-transparent text-sm text-white focus:outline-none placeholder-gray-500"
+                />
+                <button
+                  onClick={() => {
+                    setSearchModalOpen(false);
+                    setSearchQuery("");
+                  }}
+                  className="text-gray-400 hover:text-white p-1 cursor-pointer"
+                >
+                  <RiCloseLine className="text-2xl" />
+                </button>
+              </div>
+
+              {/* نتایج سرچ */}
+              <div className="max-h-[60vh] overflow-y-auto p-4 space-y-6">
+                {searchLoading ? (
+                  <div className="text-center py-10 text-[#CD9F63] text-xs animate-pulse">
+                    در حال جستجو...
+                  </div>
+                ) : !searchQuery.trim() ? (
+                  <div className="text-center py-10 text-gray-500 text-xs">
+                    عبارت مورد نظر خود را تایپ کنید...
+                  </div>
+                ) : searchResults.courses.length === 0 &&
+                  searchResults.products.length === 0 &&
+                  searchResults.recipe.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400 text-xs">
+                    هیچ موردی با این عبارت یافت نشد.
+                  </div>
+                ) : (
+                  <>
+                    {/* بخش دوره‌ها */}
+                    {searchResults.courses.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">
+                          دوره‌های آموزشی
+                        </h3>
+                        <div className="space-y-2">
+                          {searchResults.courses.map((course) => (
+                            <Link
+                              key={course.id}
+                              href={`/courses/${course.id}`}
+                              onClick={() => {
+                                setSearchModalOpen(false);
+                                setSearchQuery("");
+                              }}
+                              className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all"
+                            >
+                              {course.image && (
+                                <img src={course.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                              )}
+                              <div>
+                                <h4 className="text-sm font-medium text-white">{course.title}</h4>
+                                <p className="text-[11px] text-gray-400">مدرس: {course.instructor}</p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* بخش محصولات */}
+                    {searchResults.products.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">
+                          محصولات
+                        </h3>
+                        <div className="space-y-2">
+                          {searchResults.products.map((product) => (
+                            <Link
+                              key={product.id}
+                              href={`/products/${product.id}`}
+                              onClick={() => {
+                                setSearchModalOpen(false);
+                                setSearchQuery("");
+                              }}
+                              className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all"
+                            >
+                              {product.image && (
+                                <img src={product.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                              )}
+                              <div>
+                                <h4 className="text-sm font-medium text-white">{product.title}</h4>
+                                <p className="text-[11px] text-gray-400">
+                                  {Number(product.pricePerUnit || 0).toLocaleString()} تومان
+                                </p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* بخش دستور پخت */}
+                    {searchResults.recipe.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">
+                          دستور پخت‌ها
+                        </h3>
+                        <div className="space-y-2">
+                          {searchResults.recipe.map((recipe) => (
+                            <Link
+                              key={recipe.id}
+                              href={`/recipe/${recipe.id}`}
+                              onClick={() => {
+                                setSearchModalOpen(false);
+                                setSearchQuery("");
+                              }}
+                              className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all"
+                            >
+                              {recipe.image && (
+                                <img src={recipe.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                              )}
+                              <div>
+                                <h4 className="text-sm font-medium text-white">{recipe.title}</h4>
+                                <p className="text-[11px] text-gray-400">آماده‌سازی: {recipe.prepTime}</p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Mobile Bottom Nav */}
         <nav className="fixed backdrop-blur-[14px] bg-[#101011]/40 bottom-0 left-0 w-full shadow-md flex justify-around items-center py-2 lg:hidden z-50 border-t border-[#1E1E1D]">

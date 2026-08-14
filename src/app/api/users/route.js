@@ -45,25 +45,29 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, email } = body;
+    const { phoneNumber, firstName, lastName, addressDetail, postalCode, isAdmin, isVerified } = body;
 
-    if (!name?.trim() || !email?.trim()) {
-      return NextResponse.json({ success: false, error: "نام و ایمیل الزامی است" }, { status: 400 });
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ success: false, error: "فرمت ایمیل نامعتبر است" }, { status: 400 });
+    if (!phoneNumber?.trim()) {
+      return NextResponse.json({ success: false, error: "شماره تلفن الزامی است" }, { status: 400 });
     }
 
     const newUser = await prisma.user.create({
-      data: { name: name.trim(), email: email.trim() },
+      data: {
+        phoneNumber: phoneNumber.trim(),
+        firstName: firstName?.trim() || null,
+        lastName: lastName?.trim() || null,
+        addressDetail: addressDetail?.trim() || null,
+        postalCode: postalCode?.trim() || null,
+        isAdmin: typeof isAdmin === "boolean" ? isAdmin : false,
+        isVerified: typeof isVerified === "boolean" ? isVerified : false,
+      },
     });
 
     return NextResponse.json({ success: true, user: newUser }, { status: 201 });
   } catch (error) {
-    // خطای یکتا بودن ایمیل (Prisma P2002)
+    // خطای یکتا بودن شماره تلفن (Prisma P2002)
     if (error.code === "P2002") {
-      return NextResponse.json({ success: false, error: "این ایمیل قبلاً ثبت شده است" }, { status: 409 });
+      return NextResponse.json({ success: false, error: "این شماره تلفن قبلاً ثبت شده است" }, { status: 409 });
     }
     console.error(error);
     return NextResponse.json({ success: false, error: "خطا در ایجاد کاربر" }, { status: 500 });
@@ -79,24 +83,41 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
-    const { id, name, email } = body;
+    const { id, phoneNumber, firstName, lastName, addressDetail, postalCode, isAdmin, isVerified } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: "شناسه کاربر ارسال نشده است" }, { status: 400 });
     }
-    if (!name?.trim() || !email?.trim()) {
-      return NextResponse.json({ success: false, error: "نام و ایمیل الزامی است" }, { status: 400 });
+    if (!phoneNumber?.trim()) {
+      return NextResponse.json({ success: false, error: "شماره تلفن الزامی است" }, { status: 400 });
+    }
+
+    // تبدیل id به عدد صحیح چون نوع آن در اسکیما Int است
+    const userId = parseInt(id, 10);
+    if (isNaN(userId)) {
+      return NextResponse.json({ success: false, error: "شناسه کاربر نامعتبر است" }, { status: 400 });
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id },
-      data: { name: name.trim(), email: email.trim() },
+      where: { id: userId },
+      data: {
+        phoneNumber: phoneNumber.trim(),
+        firstName: firstName?.trim() || null,
+        lastName: lastName?.trim() || null,
+        addressDetail: addressDetail?.trim() || null,
+        postalCode: postalCode?.trim() || null,
+        ...(typeof isAdmin === "boolean" && { isAdmin }),
+        ...(typeof isVerified === "boolean" && { isVerified }),
+      },
     });
 
     return NextResponse.json({ success: true, user: updatedUser });
   } catch (error) {
     if (error.code === "P2025") {
       return NextResponse.json({ success: false, error: "کاربر یافت نشد" }, { status: 404 });
+    }
+    if (error.code === "P2002") {
+      return NextResponse.json({ success: false, error: "این شماره تلفن متعلق به کاربر دیگری است" }, { status: 409 });
     }
     console.error(error);
     return NextResponse.json({ success: false, error: "خطا در ویرایش کاربر" }, { status: 500 });
@@ -111,14 +132,19 @@ export async function DELETE(request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
+  const idParam = searchParams.get("id");
 
-  if (!id) {
+  if (!idParam) {
     return NextResponse.json({ success: false, error: "شناسه کاربر ارسال نشده است" }, { status: 400 });
   }
 
+  const userId = parseInt(idParam, 10);
+  if (isNaN(userId)) {
+    return NextResponse.json({ success: false, error: "شناسه کاربر نامعتبر است" }, { status: 400 });
+  }
+
   try {
-    await prisma.user.delete({ where: { id } });
+    await prisma.user.delete({ where: { id: userId } });
     return NextResponse.json({ success: true, message: "کاربر با موفقیت حذف شد" });
   } catch (error) {
     if (error.code === "P2025") {

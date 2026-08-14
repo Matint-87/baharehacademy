@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 
-// این endpoint عمومیه (فروشگاه اصلی سایت هم ازش استفاده می‌کنه) - قفل ادمین نداره
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const page = Math.max(parseInt(searchParams.get("page") || "1"), 1);
@@ -10,7 +9,7 @@ export async function GET(request) {
   const skip = (page - 1) * limit;
 
   try {
-    const [recipe, totalCount] = await Promise.all([
+    const [recipeList, totalCount] = await Promise.all([
       prisma.recipe.findMany({
         skip,
         take: limit,
@@ -21,13 +20,14 @@ export async function GET(request) {
 
     return NextResponse.json({
       success: true,
-      recipe,
+      recipes: recipeList, // اضافه شده برای سازگاری با فرانت‌اند
+      recipe: recipeList,  // حفظ مقدار قبلی برای سایر بخش‌ها
       totalCount,
-      hasMore: skip + recipe.length < totalCount,
+      hasMore: skip + recipeList.length < totalCount,
     });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ success: false, recipe: [], error: "خطا در دریافت دستور پخت‌ها" }, { status: 500 });
+    return NextResponse.json({ success: false, recipes: [], recipe: [], error: "خطا در دریافت دستور پخت‌ها" }, { status: 500 });
   }
 }
 
@@ -52,7 +52,7 @@ export async function POST(request) {
       data: {
         title: title.trim(),
         description,
-        ingredients, // آرایه‌ای از مواد لازم
+        ingredients,
         instructions,
         prepTime,
         image,
