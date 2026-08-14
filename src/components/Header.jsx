@@ -20,6 +20,7 @@ function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // گرفتن تعداد اقلام سبد خرید از Zustand
   const cart = useCartStore((state) => state.cart);
@@ -39,11 +40,22 @@ function Header() {
     }
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
+  const handleLogout = async () => {
+    setLoggingOut(true);
     setDropdownOpen(false);
-    window.location.href = "/login";
+
+    try {
+      // مهم: باید کوکی httpOnly سمت سرور هم پاک بشه، وگرنه کاربر عملاً
+      // همچنان لاگین می‌مونه (پاک کردن فقط localStorage کافی نیست)
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Error during logout:", e);
+    } finally {
+      localStorage.removeItem("user");
+      setUser(null);
+      setLoggingOut(false);
+      window.location.href = "/login";
+    }
   };
 
   const navLinks = [
@@ -125,10 +137,11 @@ function Header() {
                       
                       <button
                         onClick={handleLogout}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-red-400 transition-colors hover:bg-red-500/10 cursor-pointer"
+                        disabled={loggingOut}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-red-400 transition-colors hover:bg-red-500/10 cursor-pointer disabled:opacity-50"
                       >
                         <RiLogoutBoxRLine className="text-base" />
-                        خروج از حساب
+                        {loggingOut ? "در حال خروج..." : "خروج از حساب"}
                       </button>
                     </div>
                   )}

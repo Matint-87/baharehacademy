@@ -17,7 +17,6 @@ const profileSchema = Yup.object({
 
 function ProfilePage() {
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState(null);
 
   const formik = useFormik({
     initialValues: {
@@ -28,29 +27,31 @@ function ProfilePage() {
     },
     validationSchema: profileSchema,
     onSubmit: async (values) => {
-      if (!userId) {
-        toast.error("شناسه کاربر یافت نشد. لطفاً دوباره وارد شوید.");
-        return;
-      }
-
       setLoading(true);
 
       try {
+        // userId دیگه از فرانت فرستاده نمی‌شه؛ سرور کاربر رو از روی کوکی سشن تشخیص می‌ده
         const response = await fetch("/api/auth/update-profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, ...values }),
+          body: JSON.stringify(values),
         });
 
         const data = await response.json();
 
         if (!response.ok) {
+          // اگه سشن منقضی شده یا اصلاً وجود نداره، برگردون به صفحه‌ی ورود
+          if (response.status === 401) {
+            toast.error("نشست شما منقضی شده. لطفاً دوباره وارد شوید.");
+            window.location.href = "/login";
+            return;
+          }
           throw new Error(data.error || "خطا در ذخیره اطلاعات.");
         }
 
         toast.success("اطلاعات پروفایل با موفقیت ثبت شد! 🍳");
-        
-        // ذخیره دقیق اطلاعات دریافتی از سرور در LocalStorage
+
+        // این localStorage فقط برای نمایش سریع اطلاعات توی UI استفاده می‌شه
         localStorage.setItem("user", JSON.stringify(data.user));
 
         setTimeout(() => {
@@ -66,13 +67,15 @@ function ProfilePage() {
   });
 
   useEffect(() => {
+    // این فقط برای پیش‌پر کردن فرم با اطلاعات قبلیه (تجربه‌ی کاربری)،
+    // نه چک امنیتی. اگه سشن معتبر نباشه، خود درخواست POST با ۴۰۱ رد می‌شه
+    // و اونجا به لاگین هدایت می‌شیم. برای جلوگیری کامل از دسترسی افراد میهمان
+    // به این صفحه، بهتره یک middleware.js هم سمت سرور اضافه کنی.
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
         const userObj = JSON.parse(savedUser);
-        setUserId(userObj.id);
 
-        // پر کردن مقادیر اولیه فرم (پشتیبانی از نام‌های مختلف فیلد آدرس در دیتابیس)
         formik.setValues({
           firstName: userObj.firstName || "",
           lastName: userObj.lastName || "",

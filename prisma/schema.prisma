@@ -7,18 +7,24 @@ generator client {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  phoneNumber  String   @unique
-  firstName    String?
-  lastName     String?
+  id            Int     @id @default(autoincrement())
+  phoneNumber   String  @unique
+  firstName     String?
+  lastName      String?
   addressDetail String?
-  postalCode   String?
-  isVerified   Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  orders       Order[]
-}
+  postalCode    String?
+  isVerified    Boolean @default(false)
+  isAdmin       Boolean @default(false)
 
+  otpCode       String?
+  otpExpiresAt  DateTime?
+  otpAttempts   Int       @default(0)
+  otpLastSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
 
 model Course {
   id          String   @id @default(uuid())
@@ -31,7 +37,7 @@ model Course {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  orders      Order[]
+  orders Order[]
 }
 
 model Order {
@@ -45,14 +51,26 @@ model Order {
 }
 
 model Product {
-  id          String   @id @default(uuid())
-  title       String
-  category    String
+  id           String   @id @default(uuid())
+  title        String
+  category     String
   pricePerUnit Float
-  unitType    String   @default("gram")
-  step        Int      @default(100)
-  image       String?
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  unitType     String   @default("gram")
+  step         Int      @default(100)
+  image        String?
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Recipe {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  ingredients   String[]
+  instructions  String   
+  prepTime      String?  
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

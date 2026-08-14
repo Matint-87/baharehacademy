@@ -1,88 +1,89 @@
-import { pool } from "@/lib/db";
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { FaChevronDown, FaClock } from "react-icons/fa";
 
-async function getProducts() {
-  "use server";
-  try {
-    const [rows] = await pool.query("SELECT * FROM products");
-    return rows;
-  } catch (error) {
-    console.error("Database Error:", error);
-    return [];
-  }
-}
+export default function RecipesPage() {
+  const [recipes, setRecipes] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-export default async function page() {
-  const products = await getProducts();
+  const fetchRecipes = async (pageNum, isNewPage = false) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/recipe?page=${pageNum}`);
+      const data = await res.json();
+      if (data.success) {
+        setRecipes((prev) => isNewPage ? [...prev, ...data.recipes] : data.recipes);
+        setHasMore(data.hasMore);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecipes(1);
+  }, []);
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchRecipes(nextPage, true);
+  };
 
   return (
-    <>
-      <div className="flex flex-wrap gap-6 justify-center">
-        {products.map((item) => (
-          <div
-            key={item.id}
-            className="w-80  rounded-lg overflow-hidden shadow-lg bg-white p-4 transition-all duration-300 hover:shadow-xl"
+    <div className="p-8 max-w-7xl mx-auto text-white">
+      <h1 className="text-3xl font-bold mb-8">دستورهای پخت آشپزی</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {recipes.map((recipe, index) => (
+          <Link 
+            key={recipe.id || index} 
+            href={`/recipes/${recipe.id}`}
+            className="border border-white/10 bg-[#151516] rounded-2xl overflow-hidden hover:border-[#CD9F63] transition-all duration-300 flex flex-col justify-between"
           >
-            <div className="w-full h-56 md:h-64 overflow-hidden rounded-md mb-4">
-              <img
-                className="w-full h-full object-cover"
-                src={item.image}
-                alt={item.name}
-              />
-            </div>
-
-            {/* Product Info */}
-            <div className="px-2 pb-3">
-              <h2 className="font-bold text-xl mb-2 text-gray-800">
-                {item.name}
-              </h2>
-              <p className="text-gray-600 text-sm mb-3 leading-relaxed">
-                {item.description}
-              </p>
-
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                <span>نوع گوشت</span>
-                <span className="font-semibold text-gray-700">
-                  {item.meat_type}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                <span>درصد گوشت</span>
-                <span className="font-semibold text-gray-700">
-                  {item.meat_percentage}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                <span>وزن</span>
-                <span className="font-semibold text-gray-700">
-                  {item.weight_grams} گرم
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                <span>تاریخ انقضا</span>
-                <span className="font-semibold text-gray-700">
-                  {item.expiration_date}
-                </span>
-              </div>
-
-              {/* Price and Stock Info */}
-              <div className="flex items-center justify-between mt-4">
-                <span className="text-red-700 font-bold text-lg">
-                  {item.price} تومان
-                </span>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-200 text-sm">
-                  افزودن به سبد
-                </button>
-              </div>
-
-              {item.stock_quantity <= 5 && (
-                <div className="mt-3 text-xs text-orange-600 font-medium">
-                  تنها {item.stock_quantity} عدد در انبار باقی مانده!
-                </div>
+            <div>
+              {recipe.image ? (
+                <img src={recipe.image} alt={recipe.title} className="w-full h-48 object-cover" />
+              ) : (
+                <div className="w-full h-48 bg-white/5 flex items-center justify-center text-gray-500 text-sm">بدون تصویر</div>
               )}
+              <div className="p-5">
+                <h2 className="font-bold text-xl mb-2">{recipe.title}</h2>
+                <p className="text-sm text-gray-400 line-clamp-2">{recipe.description}</p>
+              </div>
             </div>
-          </div>
+
+            <div className="px-5 pb-5 flex items-center justify-between text-xs text-gray-400">
+              {recipe.prepTime && (
+                <span className="flex items-center gap-1 bg-white/5 px-3 py-1.5 rounded-xl text-[#CD9F63]">
+                  <FaClock />
+                  {recipe.prepTime}
+                </span>
+              )}
+              <span className="text-[#CD9F63] font-medium hover:underline">مشاهده دستور پخت &larr;</span>
+            </div>
+          </Link>
         ))}
       </div>
-    </>
+
+      {/* دکمه نمایش بیشتر (Lazy Loading) */}
+      {hasMore && (
+        <div className="flex justify-center mt-10">
+          <button
+            onClick={loadMore}
+            disabled={loading}
+            className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-bold transition-all cursor-pointer disabled:opacity-50"
+          >
+            <span>{loading ? "در حال بارگذاری..." : "نمایش بیشتر"}</span>
+            <FaChevronDown />
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

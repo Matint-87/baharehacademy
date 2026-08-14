@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { FaArrowLeft, FaMobileAlt, FaShieldAlt, FaKey } from "react-icons/fa";
-import { toast } from "react-toastify"; // ایمپورت کتابخانه توست
+import { toast } from "react-toastify";
 
 function Login() {
   const [step, setStep] = useState(1);
@@ -50,11 +50,14 @@ function Login() {
         throw new Error(data.error || "خطایی در ارسال کد تایید رخ داد.");
       }
 
+      // devOtpCode فقط توی محیط dev از سرور برمی‌گرده، پس نباید بدون چک بهش تکیه کنیم
       if (data.devOtpCode) {
         setDevHint(data.devOtpCode);
+        toast.success(`کد تایید ارسال شد! (کد تست: ${data.devOtpCode})`);
+      } else {
+        toast.success("کد تایید ارسال شد!");
       }
 
-      toast.success(`کد تایید ارسال شد! (کد: ${data.devOtpCode})`);
       setStep(2);
     } catch (err) {
       setErrorMessage(err.message);
@@ -90,9 +93,11 @@ function Login() {
         throw new Error(data.error || "کد تایید نامعتبر است.");
       }
 
-      // استفاده از توست به جای alert
       toast.success("ورود با موفقیت انجام شد! 🎉");
 
+      // نکته: سشن واقعی از طریق کوکی httpOnly توسط سرور ست شده.
+      // این localStorage فقط برای نمایش سریع اطلاعات کاربر (نام و ...) توی UI استفاده می‌شه،
+      // نه برای تصمیم‌گیری امنیتی - آن کار باید سمت سرور (middleware/session) انجام بشه.
       localStorage.setItem("user", JSON.stringify(data.user));
 
       setTimeout(() => {

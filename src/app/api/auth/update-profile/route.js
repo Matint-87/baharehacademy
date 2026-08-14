@@ -1,26 +1,35 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 
 export async function POST(request) {
   try {
-    const { userId, firstName, lastName, address, postalCode } = await request.json();
+    // شناسه کاربر باید از سشن معتبر بیاد، نه از بدنه‌ی درخواست
+    // (وگرنه هرکسی می‌تونه با فرستادن userId دلخواه، پروفایل بقیه رو تغییر بده)
+    const session = await getSession();
 
-    if (!userId) {
-      return NextResponse.json({ error: "شناسه کاربر نامعتبر است." }, { status: 400 });
+    if (!session?.userId) {
+      return NextResponse.json({ error: "ابتدا وارد حساب کاربری خود شوید." }, { status: 401 });
     }
 
-    // ۱. به‌روزرسانی دقیق اطلاعات در دیتابیس پریسما
+    const { firstName, lastName, address, postalCode } = await request.json();
+
+    // اعتبارسنجی حداقلی ورودی‌ها
+    if (!firstName || !lastName) {
+      return NextResponse.json({ error: "نام و نام خانوادگی الزامی است." }, { status: 400 });
+    }
+
+    // به‌روزرسانی دقیق اطلاعات در دیتابیس - فقط برای کاربر همون سشن
     const updatedUser = await prisma.user.update({
-      where: { id: Number(userId) },
+      where: { id: session.userId },
       data: {
         firstName,
         lastName,
         addressDetail: address, // نام فیلد در دیتابیس شما
-        postalCode: postalCode, // مطمئن شوید نام فیلد در اسکیما همین است
+        postalCode,
       },
     });
 
-    // ۲. ارسال ساختار کامل به فرانت‌اند تا در لوکال‌استوریج ذخیره شود
     return NextResponse.json({
       success: true,
       message: "پروفایل با موفقیت تکمیل شد.",

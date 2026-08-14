@@ -110,12 +110,24 @@ export default function ProductsPage() {
               return (
                 <div
                   key={product.id}
-                  className="flex flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-[#151516]/80 p-5 backdrop-blur-xl"
+                  className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-[#151516]/80 p-5 backdrop-blur-xl"
                 >
                   <div>
-                    <div className="h-48 w-full bg-gray-800 rounded-2xl mb-4 flex items-center justify-center text-gray-500 font-bold">
-                      تصویر محصول
+                    {/* نمایش تصویر محصول */}
+                    <div className="relative mb-4 h-48 w-full overflow-hidden rounded-2xl bg-gray-800">
+                      {product.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.title}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-gray-600 font-bold">
+                          بدون تصویر
+                        </div>
+                      )}
                     </div>
+
                     <span className="text-xs text-[#CD9F63] bg-[#CD9F63]/10 px-3 py-1 rounded-full">
                       {product.category}
                     </span>

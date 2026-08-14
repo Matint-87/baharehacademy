@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, startTransition } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FaClock, FaUserGraduate, FaArrowLeft } from "react-icons/fa";
 
@@ -9,24 +9,6 @@ export default function CoursesPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
-
-  // تابع دریافت دوره‌ها
-  const loadCourses = async (pageNum) => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/courses?page=${pageNum}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setCourses((prev) => (pageNum === 1 ? data.courses : [...prev, ...data.courses]));
-        setHasMore(data.hasMore);
-      }
-    } catch (error) {
-      console.error("Error loading courses:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // استفاده از روش مدرن‌تر برای بارگذاری صفحه اول و تغییرات صفحه بدون اخطار Effect
   useEffect(() => {
@@ -86,8 +68,19 @@ export default function CoursesPage() {
                 className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-[#151516]/80 p-5 backdrop-blur-xl transition-all hover:border-[#CD9F63]/50 hover:shadow-xl hover:shadow-black/40"
               >
                 <div>
-                  <div className="relative mb-4 h-48 w-full overflow-hidden rounded-2xl bg-gray-800 flex items-center justify-center text-gray-600 font-bold">
-                    تصویر دوره
+                  {/* نمایش تصویر دوره */}
+                  <div className="relative mb-4 h-48 w-full overflow-hidden rounded-2xl bg-gray-800">
+                    {course.image ? (
+                      <img
+                        src={course.image}
+                        alt={course.title}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-gray-600 font-bold">
+                        بدون تصویر
+                      </div>
+                    )}
                   </div>
 
                   <h2 className="text-lg font-bold text-white group-hover:text-[#CD9F63] transition-colors">
@@ -106,7 +99,7 @@ export default function CoursesPage() {
 
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-[#CD9F63]">
-                      {course.price.toLocaleString()} تومان
+                      {course.price?.toLocaleString()} تومان
                     </span>
                     <Link
                       href={`/courses/${course.id}`}
