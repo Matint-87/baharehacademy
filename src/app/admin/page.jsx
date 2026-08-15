@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { FaUsers, FaPlus, FaEdit, FaTrash, FaImage, FaTimes, FaChevronDown } from "react-icons/fa";
+import { FaUsers, FaPlus, FaEdit, FaTrash, FaImage, FaTimes, FaChevronDown, FaShoppingCart, FaLockOpen, FaBox } from "react-icons/fa";
 import { AiFillProduct } from "react-icons/ai";
 import { BiSolidMoviePlay } from "react-icons/bi";
 import { LuNotebookText } from "react-icons/lu";
@@ -9,23 +9,22 @@ import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function Page() {
-  const [activeSection, setActiveSection] = useState("users");
+  const [activeSection, setActiveSection] = useState("orders");
   const [data, setData] = useState({
+    orders: [],
     users: [],
     products: [],
     courses: [],
     recipe: [],
   });
 
-  // تعداد کل واقعی هر بخش (برای کارت‌های آماری بالای صفحه) - جدا از دیتای صفحه‌بندی‌شده
-  const [counts, setCounts] = useState({ users: 0, products: 0, courses: 0, recipe: 0 });
+  const [counts, setCounts] = useState({ orders: 0, users: 0, products: 0, courses: 0, recipe: 0 });
 
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false); // جلوگیری از دابل ساب‌میت
+  const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
 
-  // صفحه‌بندی واقعی سمت سرور (به جای برش زدن آرایه‌ی لوکال)
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
@@ -38,7 +37,9 @@ export default function Page() {
     instructor: "",
     description: "",
     image: "",
-    // فیلدهای جدید مربوط به مدل User
+    stock: "",
+    step: "100",
+    unitType: "gram",
     phoneNumber: "",
     firstName: "",
     lastName: "",
@@ -46,21 +47,22 @@ export default function Page() {
     postalCode: "",
     isAdmin: false,
     isVerified: false,
-    // فیلدهای مخصوص دستور پخت
-    ingredientsText: "", // هر خط = یک ماده لازم
+    ingredientsText: "",
     instructions: "",
     prepTime: "",
+    status: "PROCESSING",
   });
 
   const menuItems = [
+    { id: "orders", title: "سفارشات", icon: FaShoppingCart },
     { id: "users", title: "کاربران", icon: FaUsers },
     { id: "products", title: "محصولات", icon: AiFillProduct },
-    { id: "courses", title: "دوره", icon: BiSolidMoviePlay },
+    { id: "courses", title: "دوره‌ها", icon: BiSolidMoviePlay },
     { id: "recipe", title: "دستور پخت", icon: LuNotebookText },
   ];
 
   const endpointOf = (section) => `/api/${section}`;
-  const resultKeyOf = (section) => section; // users -> json.users, products -> json.products و ...
+  const resultKeyOf = (section) => section;
 
   const fetchData = useCallback(async (section, pageNum, append = false) => {
     setLoading(true);
@@ -95,7 +97,6 @@ export default function Page() {
     }
   }, []);
 
-  // با هر بار تغییر تب، صفحه به ۱ برمی‌گرده و دوباره از سرور می‌گیره
   useEffect(() => {
     setPage(1);
     fetchData(activeSection, 1, false);
@@ -111,7 +112,7 @@ export default function Page() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        toast.warning("حجم تصویر نباید بیشتر از 2 مگابایت باشد");
+        toast.warning("حجم تصویر نباید بیشتر از ۲ مگابایت باشد");
         return;
       }
 
@@ -127,6 +128,27 @@ export default function Page() {
     }
   };
 
+  const handleUnlockUser = async (userId) => {
+    try {
+      const res = await fetch(`/api/users/unlock`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: userId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("حساب کاربر با موفقیت آزاد شد!");
+        fetchData(activeSection, page, false);
+      } else {
+        toast.error(json.error || "خطا در باز کردن قفل حساب");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("خطای ارتباط با سرور");
+    }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (saving) return;
@@ -138,7 +160,6 @@ export default function Page() {
 
       let payload = { ...formData };
 
-      // تنظیمات خاص برای دستور پخت
       if (activeSection === "recipe") {
         const ingredients = formData.ingredientsText
           .split("\n")
@@ -152,9 +173,7 @@ export default function Page() {
           prepTime: formData.prepTime,
           image: formData.image,
         };
-      } 
-      // تنظیمات خاص برای کاربران
-      else if (activeSection === "users") {
+      } else if (activeSection === "users") {
         payload = {
           phoneNumber: formData.phoneNumber,
           firstName: formData.firstName,
@@ -163,6 +182,30 @@ export default function Page() {
           postalCode: formData.postalCode,
           isAdmin: formData.isAdmin,
           isVerified: formData.isVerified,
+        };
+      } else if (activeSection === "products") {
+        payload = {
+          title: formData.title,
+          category: formData.category,
+          pricePerUnit: Number(formData.pricePerUnit),
+          stock: Number(formData.stock),
+          step: Number(formData.step),
+          unitType: formData.unitType,
+          description: formData.description,
+          image: formData.image,
+        };
+      } else if (activeSection === "courses") {
+        payload = {
+          title: formData.title,
+          price: Number(formData.price),
+          duration: formData.duration,
+          instructor: formData.instructor,
+          description: formData.description,
+          image: formData.image,
+        };
+      } else if (activeSection === "orders") {
+        payload = {
+          status: formData.status,
         };
       }
 
@@ -215,12 +258,17 @@ export default function Page() {
   };
 
   const openAddModal = () => {
+    if (activeSection === "orders") {
+      toast.info("سفارشات جدید باید از طریق فرآیند خرید ثبت شوند.");
+      return;
+    }
     setEditItem(null);
     setFormData({
       title: "", category: "", pricePerUnit: "", price: "", duration: "",
-      instructor: "", description: "", image: "", phoneNumber: "", firstName: "",
-      lastName: "", addressDetail: "", postalCode: "", isAdmin: false, isVerified: false,
-      ingredientsText: "", instructions: "", prepTime: "",
+      instructor: "", description: "", image: "", stock: "", step: "100", unitType: "gram",
+      phoneNumber: "", firstName: "", lastName: "", addressDetail: "", postalCode: "", 
+      isAdmin: false, isVerified: false, ingredientsText: "", instructions: "", prepTime: "",
+      status: "PROCESSING",
     });
     setModalOpen(true);
   };
@@ -236,6 +284,9 @@ export default function Page() {
       instructor: item.instructor || "",
       description: item.description || "",
       image: item.image || "",
+      stock: item.stock ?? "",
+      step: item.step ?? "100",
+      unitType: item.unitType || "gram",
       phoneNumber: item.phoneNumber || "",
       firstName: item.firstName || "",
       lastName: item.lastName || "",
@@ -246,6 +297,7 @@ export default function Page() {
       ingredientsText: Array.isArray(item.ingredients) ? item.ingredients.join("\n") : "",
       instructions: item.instructions || "",
       prepTime: item.prepTime || "",
+      status: item.status || "PROCESSING",
     });
     setModalOpen(true);
   };
@@ -256,11 +308,11 @@ export default function Page() {
     return (
       <div className="space-y-8 pb-20">
         {/* آمار کلی */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.id} className="border border-white/10 bg-[#151516]/80 p-5 rounded-2xl backdrop-blur-xl flex items-center justify-between">
+              <div key={item.id} className="border border-white/10 bg-[#151516]/80 p-4 rounded-2xl backdrop-blur-xl flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-400">{item.title}</p>
                   <h3 className="text-2xl font-bold mt-1 text-white">{counts[item.id] ?? 0}</h3>
@@ -278,13 +330,15 @@ export default function Page() {
           <h1 className="text-2xl font-bold text-white">
             مدیریت {menuItems.find((m) => m.id === activeSection)?.title}
           </h1>
-          <button
-            onClick={openAddModal}
-            className="flex items-center gap-2 bg-[#CD9F63] text-[#111] px-4 py-2 rounded-xl text-xs font-bold hover:bg-white transition-all cursor-pointer"
-          >
-            <FaPlus />
-            <span>افزودن مورد جدید</span>
-          </button>
+          {activeSection !== "orders" && (
+            <button
+              onClick={openAddModal}
+              className="flex items-center gap-2 bg-[#CD9F63] text-[#111] px-4 py-2 rounded-xl text-xs font-bold hover:bg-white transition-all cursor-pointer"
+            >
+              <FaPlus />
+              <span>افزودن مورد جدید</span>
+            </button>
+          )}
         </div>
 
         {/* جدول داده‌ها */}
@@ -300,50 +354,92 @@ export default function Page() {
               <table className="w-full text-right border-collapse">
                 <thead>
                   <tr className="border-b border-white/10 text-xs text-gray-400 bg-white/5">
-                    <th className="p-4">تصویر</th>
-                    <th className="p-4">عنوان / نام کاربر</th>
-                    <th className="p-4">جزئیات</th>
+                    <th className="p-4">{activeSection === "orders" ? "کد سفارش" : "تصویر"}</th>
+                    <th className="p-4">{activeSection === "orders" ? "مشتری / گیرنده" : activeSection === "users" ? "نام و نام خانوادگی" : "عنوان"}</th>
+                    <th className="p-4">{activeSection === "orders" ? "مبلغ کل / وضعیت" : activeSection === "users" ? "شماره تلفن / وضعیت قفل" : "جزئیات / انبار"}</th>
                     <th className="p-4 text-center">عملیات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm">
-                  {currentList.map((item, index) => (
-                    <tr key={`${item.id}-${index}`} className="hover:bg-white/5 transition-all">
-                      <td className="p-4">
-                        {item.image ? (
-                          <img src={item.image} alt="" className="w-10 h-10 rounded-lg object-cover border border-white/10" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-xs text-gray-500">بدون عکس</div>
-                        )}
-                      </td>
-                      <td className="p-4 font-medium">
-                        {activeSection === "users" 
-                          ? `${item.firstName || ""} ${item.lastName || ""}`.trim() || item.phoneNumber || "بدون نام"
-                          : (item.title || "بدون عنوان")}
-                      </td>
-                      <td className="p-4 text-xs text-gray-400">
-                        {activeSection === "users" 
-                          ? item.phoneNumber 
-                          : (item.price || item.pricePerUnit
-                            ? `${Number(item.price || item.pricePerUnit).toLocaleString()} تومان`
-                            : (item.category || item.duration || item.prepTime || "-"))}
-                      </td>
-                      <td className="p-4 flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openEditModal(item)}
-                          className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/25 transition-all cursor-pointer"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/25 transition-all cursor-pointer"
-                        >
-                          <FaTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {currentList.map((item, index) => {
+                    const isLocked = item.loginLockedUntil && new Date(item.loginLockedUntil) > new Date();
+                    return (
+                      <tr key={`${item.id}-${index}`} className="hover:bg-white/5 transition-all">
+                        <td className="p-4">
+                          {activeSection === "orders" ? (
+                            <span className="font-mono text-xs text-[#CD9F63]">{item.id.slice(0, 8)}...</span>
+                          ) : item.image ? (
+                            <img src={item.image} alt="" className="w-10 h-10 rounded-lg object-cover border border-white/10" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-xs text-gray-500">بدون عکس</div>
+                          )}
+                        </td>
+                        <td className="p-4 font-medium">
+                          {activeSection === "orders" ? (
+                            <div>
+                              <p>{item.recipientName}</p>
+                              <p className="text-xs text-gray-400">{item.recipientPhone}</p>
+                            </div>
+                          ) : activeSection === "users" ? (
+                            `${item.firstName || ""} ${item.lastName || ""}`.trim() || "بدون نام"
+                          ) : (
+                            item.title || "بدون عنوان"
+                          )}
+                        </td>
+                        <td className="p-4 text-xs text-gray-400">
+                          {activeSection === "orders" ? (
+                            <div>
+                              <p className="text-white font-bold">{Number(item.totalAmount).toLocaleString()} تومان</p>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                {item.status}
+                              </span>
+                            </div>
+                          ) : activeSection === "users" ? (
+                            <div className="flex items-center gap-3">
+                              <span>{item.phoneNumber}</span>
+                              {isLocked && (
+                                <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px]">قفل‌شده</span>
+                              )}
+                            </div>
+                          ) : activeSection === "products" ? (
+                            <div>
+                              <p>{Number(item.pricePerUnit).toLocaleString()} تومان</p>
+                              <p className={`text-[10px] ${item.stock > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                انبار: {item.stock} {item.unitType}
+                              </p>
+                            </div>
+                          ) : (
+                            item.price ? `${Number(item.price).toLocaleString()} تومان` : (item.category || item.duration || item.prepTime || "-")
+                          )}
+                        </td>
+                        <td className="p-4 flex items-center justify-center gap-2">
+                          {activeSection === "users" && isLocked && (
+                            <button
+                              onClick={() => handleUnlockUser(item.id)}
+                              title="باز کردن قفل حساب"
+                              className="p-2 bg-amber-500/10 text-amber-400 rounded-lg hover:bg-amber-500/25 transition-all cursor-pointer"
+                            >
+                              <FaLockOpen />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => openEditModal(item)}
+                            className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/25 transition-all cursor-pointer"
+                          >
+                            <FaEdit />
+                          </button>
+                          {activeSection !== "orders" && (
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/25 transition-all cursor-pointer"
+                            >
+                              <FaTrash />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
@@ -373,7 +469,23 @@ export default function Page() {
               </div>
 
               <form onSubmit={handleSave} className="space-y-4">
-                {activeSection === "users" ? (
+                {activeSection === "orders" ? (
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">وضعیت سفارش</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full bg-[#202022] border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]"
+                    >
+                      <option value="PENDING_PAYMENT">در انتظار پرداخت</option>
+                      <option value="PAID">پرداخت شده</option>
+                      <option value="PROCESSING">در حال پردازش</option>
+                      <option value="SHIPPED">ارسال شده</option>
+                      <option value="DELIVERED">تحویل داده شده</option>
+                      <option value="CANCELLED">لغو شده</option>
+                    </select>
+                  </div>
+                ) : activeSection === "users" ? (
                   <>
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">شماره تلفن</label>
@@ -419,7 +531,6 @@ export default function Page() {
                         onChange={(e) => setFormData({ ...formData, ingredientsText: e.target.value })}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]"
                         rows="4"
-                        placeholder={"مثال:\n۲ پیمانه آرد\n۱ قاشق چای‌خوری نمک"}
                         required
                       />
                     </div>
@@ -428,30 +539,8 @@ export default function Page() {
                       <textarea value={formData.instructions} onChange={(e) => setFormData({ ...formData, instructions: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" rows="4" required />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-400 block mb-1">زمان آماده‌سازی (مثلاً ۳۰ دقیقه)</label>
+                      <label className="text-xs text-gray-400 block mb-1">زمان آماده‌سازی</label>
                       <input type="text" value={formData.prepTime} onChange={(e) => setFormData({ ...formData, prepTime: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" required />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">توضیحات</label>
-                      <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" rows="2" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">آپلود تصویر</label>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-xs cursor-pointer hover:bg-white/20 transition-all">
-                          <FaImage />
-                          <span>انتخاب فایل</span>
-                          <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                        </label>
-                        {formData.image ? (
-                          <div className="flex items-center gap-2">
-                            <img src={formData.image} alt="Preview" className="w-8 h-8 rounded object-cover border border-white/20" />
-                            <span className="text-xs text-[#CD9F63]">آماده ذخیره</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">تصویری انتخاب نشده است</span>
-                        )}
-                      </div>
                     </div>
                   </>
                 ) : (
@@ -467,9 +556,15 @@ export default function Page() {
                           <label className="text-xs text-gray-400 block mb-1">دسته‌بندی</label>
                           <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" required />
                         </div>
-                        <div>
-                          <label className="text-xs text-gray-400 block mb-1">قیمت (تومان)</label>
-                          <input type="number" value={formData.pricePerUnit} onChange={(e) => setFormData({ ...formData, pricePerUnit: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" required />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-400 block mb-1">قیمت هر واحد (تومان)</label>
+                            <input type="number" value={formData.pricePerUnit} onChange={(e) => setFormData({ ...formData, pricePerUnit: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" required />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-400 block mb-1">موجودی انبار (Stock)</label>
+                            <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" required />
+                          </div>
                         </div>
                       </>
                     )}
@@ -491,25 +586,6 @@ export default function Page() {
                       <label className="text-xs text-gray-400 block mb-1">توضیحات</label>
                       <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#CD9F63]" rows="3" />
                     </div>
-
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">آپلود تصویر</label>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-xs cursor-pointer hover:bg-white/20 transition-all">
-                          <FaImage />
-                          <span>انتخاب فایل</span>
-                          <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                        </label>
-                        {formData.image ? (
-                          <div className="flex items-center gap-2">
-                            <img src={formData.image} alt="Preview" className="w-8 h-8 rounded object-cover border border-white/20" />
-                            <span className="text-xs text-[#CD9F63]">آماده ذخیره</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">تصویری انتخاب نشده است</span>
-                        )}
-                      </div>
-                    </div>
                   </>
                 )}
 
@@ -529,18 +605,7 @@ export default function Page() {
 
   return (
     <div className="flex h-screen bg-[#0b0b0c] text-white overflow-hidden">
-      <ToastContainer
-        position="bottom-left"
-        autoClose={2000}
-        hideProgressBar={true}
-        newestOnTop={true}
-        closeOnClick
-        rtl={true}
-        pauseOnFocusLoss={false}
-        draggable={false}
-        pauseOnHover={false}
-        theme="dark"
-      />
+      <ToastContainer position="bottom-left" autoClose={2000} hideProgressBar={true} newestOnTop={true} closeOnClick rtl={true} theme="dark" />
 
       {/* سایدبار */}
       <div className="group w-16 hover:w-56 transition-all duration-300 flex flex-col gap-2 h-full border-l border-white/10 p-3 bg-[#151516]/80 backdrop-blur-xl shadow-sm z-20">

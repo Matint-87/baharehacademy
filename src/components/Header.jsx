@@ -20,13 +20,17 @@ function Header() {
   const pathName = usePathname();
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [user, setUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
 
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState({ courses: [], products: [], recipe: [] });
+  const [searchResults, setSearchResults] = useState({
+    courses: [],
+    products: [],
+    recipe: [],
+  });
   const [searchLoading, setSearchLoading] = useState(false);
   const searchInputRef = useRef(null);
 
@@ -93,7 +97,9 @@ function Header() {
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(searchQuery.trim())}`,
+        );
         const data = await res.json();
         if (data.success) {
           setSearchResults({
@@ -139,7 +145,7 @@ function Header() {
     return (
       <>
         <header className="w-full h-17.5 flex justify-center items-center bg-[#101011]/95 backdrop-blur-[14px] sticky top-0 z-50 border-b border-[#1E1E1D]">
-          <div className="w-[85%] flex items-center h-full justify-between">
+          <div className="w-[85%] 2xl:w-[60%] flex items-center h-full justify-between">
             <Link href="/" className="">
               <span className="text-2xl text-[#e24257]">C</span>
               <span className="text-xl text-[#FFDE63]">A</span>
@@ -151,7 +157,9 @@ function Header() {
                   key={item.title}
                   href={item.href}
                   className={`text-sm font-medium transition-colors ${
-                    pathName === item.href ? "text-[#CD9F63]" : "text-white hover:text-[#CD9F63]"
+                    pathName === item.href
+                      ? "text-[#CD9F63]"
+                      : "text-white hover:text-[#CD9F63]"
                   }`}
                 >
                   {item.title}
@@ -189,7 +197,9 @@ function Header() {
                       <RiUserLine />
                     </div>
                     <span className="hidden sm:inline">
-                      {user.firstName ? `${user.firstName} ${user.lastName || ""}` : user.phoneNumber}
+                      {user.firstName
+                        ? `${user.firstName} ${user.lastName || ""}`
+                        : user.phoneNumber}
                     </span>
                   </button>
 
@@ -201,9 +211,8 @@ function Header() {
                         className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-gray-300 transition-colors hover:bg-white/5 hover:text-[#CD9F63]"
                       >
                         <RiUserLine className="text-base" />
-                        تکمیل / ویرایش پروفایل
+                        حساب کاربری
                       </Link>
-
                       <button
                         onClick={handleLogout}
                         disabled={loggingOut}
@@ -253,18 +262,26 @@ function Header() {
 
               <div className="max-h-[60vh] overflow-y-auto p-4 space-y-6">
                 {searchLoading ? (
-                  <div className="text-center py-10 text-[#CD9F63] text-xs animate-pulse">در حال جستجو...</div>
+                  <div className="text-center py-10 text-[#CD9F63] text-xs animate-pulse">
+                    در حال جستجو...
+                  </div>
                 ) : !searchQuery.trim() ? (
-                  <div className="text-center py-10 text-gray-500 text-xs">عبارت مورد نظر خود را تایپ کنید...</div>
+                  <div className="text-center py-10 text-gray-500 text-xs">
+                    عبارت مورد نظر خود را تایپ کنید...
+                  </div>
                 ) : searchResults.courses.length === 0 &&
                   searchResults.products.length === 0 &&
                   searchResults.recipe.length === 0 ? (
-                  <div className="text-center py-10 text-gray-400 text-xs">هیچ موردی با این عبارت یافت نشد.</div>
+                  <div className="text-center py-10 text-gray-400 text-xs">
+                    هیچ موردی با این عبارت یافت نشد.
+                  </div>
                 ) : (
                   <>
                     {searchResults.courses.length > 0 && (
                       <div>
-                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">دوره‌های آموزشی</h3>
+                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">
+                          دوره‌های آموزشی
+                        </h3>
                         <div className="space-y-2">
                           {searchResults.courses.map((course) => (
                             <Link
@@ -276,10 +293,20 @@ function Header() {
                               }}
                               className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all"
                             >
-                              {course.image && <img src={course.image} alt="" className="w-10 h-10 rounded-lg object-cover" />}
+                              {course.image && (
+                                <img
+                                  src={course.image}
+                                  alt=""
+                                  className="w-10 h-10 rounded-lg object-cover"
+                                />
+                              )}
                               <div>
-                                <h4 className="text-sm font-medium text-white">{course.title}</h4>
-                                <p className="text-[11px] text-gray-400">مدرس: {course.instructor}</p>
+                                <h4 className="text-sm font-medium text-white">
+                                  {course.title}
+                                </h4>
+                                <p className="text-[11px] text-gray-400">
+                                  مدرس: {course.instructor}
+                                </p>
                               </div>
                             </Link>
                           ))}
@@ -289,7 +316,9 @@ function Header() {
 
                     {searchResults.products.length > 0 && (
                       <div>
-                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">محصولات</h3>
+                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">
+                          محصولات
+                        </h3>
                         <div className="space-y-2">
                           {searchResults.products.map((product) => (
                             <Link
@@ -301,11 +330,22 @@ function Header() {
                               }}
                               className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all"
                             >
-                              {product.image && <img src={product.image} alt="" className="w-10 h-10 rounded-lg object-cover" />}
+                              {product.image && (
+                                <img
+                                  src={product.image}
+                                  alt=""
+                                  className="w-10 h-10 rounded-lg object-cover"
+                                />
+                              )}
                               <div>
-                                <h4 className="text-sm font-medium text-white">{product.title}</h4>
+                                <h4 className="text-sm font-medium text-white">
+                                  {product.title}
+                                </h4>
                                 <p className="text-[11px] text-gray-400">
-                                  {Number(product.pricePerUnit || 0).toLocaleString()} تومان
+                                  {Number(
+                                    product.pricePerUnit || 0,
+                                  ).toLocaleString()}{" "}
+                                  تومان
                                 </p>
                               </div>
                             </Link>
@@ -316,7 +356,9 @@ function Header() {
 
                     {searchResults.recipe.length > 0 && (
                       <div>
-                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">دستور پخت‌ها</h3>
+                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">
+                          دستور پخت‌ها
+                        </h3>
                         <div className="space-y-2">
                           {searchResults.recipe.map((recipe) => (
                             <Link
@@ -328,10 +370,20 @@ function Header() {
                               }}
                               className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all"
                             >
-                              {recipe.image && <img src={recipe.image} alt="" className="w-10 h-10 rounded-lg object-cover" />}
+                              {recipe.image && (
+                                <img
+                                  src={recipe.image}
+                                  alt=""
+                                  className="w-10 h-10 rounded-lg object-cover"
+                                />
+                              )}
                               <div>
-                                <h4 className="text-sm font-medium text-white">{recipe.title}</h4>
-                                <p className="text-[11px] text-gray-400">آماده‌سازی: {recipe.prepTime}</p>
+                                <h4 className="text-sm font-medium text-white">
+                                  {recipe.title}
+                                </h4>
+                                <p className="text-[11px] text-gray-400">
+                                  آماده‌سازی: {recipe.prepTime}
+                                </p>
                               </div>
                             </Link>
                           ))}

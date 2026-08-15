@@ -9,7 +9,7 @@ generator client {
 model User {
   id            Int       @id @default(autoincrement())
   phoneNumber   String    @unique
-  password      String?   
+  password      String?
 
   firstName     String?
   lastName      String?
@@ -43,17 +43,7 @@ model Course {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  orders Order[]
-}
-
-model Order {
-  id        String   @id @default(uuid())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseId  String
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  status    String   @default("PENDING")
-  createdAt DateTime @default(now())
+  orderItems  OrderItem[]
 }
 
 model Product {
@@ -63,20 +53,69 @@ model Product {
   pricePerUnit Float
   unitType     String   @default("gram")
   step         Int      @default(100)
+  stock        Int      @default(0) 
   image        String?
   description  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  orderItems   OrderItem[]
 }
 
 model Recipe {
-  id            String   @id @default(uuid())
-  title         String
-  description   String?
-  ingredients   String[]
-  instructions  String   
-  prepTime      String?  
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  ingredients  String[]
+  instructions String
+  prepTime     String?
+  image        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT 
+  PAID            
+  PROCESSING       
+  SHIPPED         
+  DELIVERED         
+  CANCELLED        
+}
+
+model Order {
+  id     String @id @default(uuid())
+  userId Int
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status      OrderStatus @default(PENDING_PAYMENT)
+  totalAmount Float
+
+  recipientName   String
+  recipientPhone  String
+  shippingAddress String
+  postalCode      String
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrderItem {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  itemType String 
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id])
+
+  titleSnapshot String 
+  quantity      Int
+  unitPrice     Float 
 }
