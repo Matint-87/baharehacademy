@@ -5,10 +5,12 @@ import { jwtVerify } from "jose";
 const encodedKey = new TextEncoder().encode(process.env.AUTH_SECRET);
 const SESSION_COOKIE_NAME = "session_token";
 
-// مسیرهایی که فقط کاربر لاگین‌کرده اجازه‌ی دیدنشون رو داره
-const PROTECTED_ROUTES = ["/profile", "/orders", "/checkout"];
+// مسیرهایی که فقط کاربر لاگین‌کرده (دارای سشن معتبر) اجازه‌ی دیدنشون رو داره
+// نکته: "/reset-password" هم اینجاست چون فقط بعد از تایید OTP در مسیر فراموشی رمز
+// (که خودش یک سشن می‌سازه) قابل دسترسیه
+const PROTECTED_ROUTES = ["/profile", "/reset-password", "/orders", "/checkout"];
 
-// مسیرهایی که کاربر لاگین‌کرده نباید دوباره ببینتشون (مثلاً صفحه‌ی لاگین)
+// مسیرهایی که کاربر لاگین‌کرده نباید دوباره ببینتشون
 const AUTH_ROUTES = ["/login"];
 
 async function verifySession(token) {
@@ -39,7 +41,10 @@ export async function middleware(request) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // اگه کاربر از قبل لاگین کرده و می‌خواد بره صفحه‌ی لاگین -> بفرست به خونه
+  // اگه کاربر از قبل سشن معتبر داره و می‌خواد بره صفحه‌ی لاگین -> بفرست به خونه
+  // توجه: این فقط یعنی «سشن معتبره»، نه لزوماً «ثبت‌نام کامل شده».
+  // اگه کاربری وسط مسیر ثبت‌نام (بعد از OTP، قبل از تکمیل پروفایل) دستی بیاد /login،
+  // به "/" فرستاده می‌شه؛ چک تکمیل‌بودن پروفایل باید در صفحه‌ی اصلی/API انجام بشه.
   if (isAuthRoute && session) {
     return NextResponse.redirect(new URL("/", request.url));
   }
@@ -50,5 +55,11 @@ export async function middleware(request) {
 // این matcher تعیین می‌کنه middleware روی کدوم مسیرها اجرا بشه
 // (فایل‌های استاتیک و API رو مستثنی می‌کنیم تا اجرای غیرلازم نداشته باشیم)
 export const config = {
-  matcher: ["/profile/:path*", "/orders/:path*", "/checkout/:path*", "/login"],
+  matcher: [
+    "/profile/:path*",
+    "/reset-password/:path*",
+    "/orders/:path*",
+    "/checkout/:path*",
+    "/login",
+  ],
 };
