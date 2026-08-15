@@ -86,7 +86,7 @@ export default function UserProfilePage() {
         const userId = currentUser.id;
 
         // ۲. گرفتن سفارشات کاربر بر اساس اسکیما Order
-        const ordersRes = await fetch(`/api/user/orders?userId=${userId}`);
+        const ordersRes = await fetch(`/api/users/orders?userId=${userId}`);
         const ordersData = await ordersRes.json();
         if (ordersData.success) {
           setOrders(ordersData.orders || []);

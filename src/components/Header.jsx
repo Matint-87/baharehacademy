@@ -14,6 +14,7 @@ import {
   RiUserLine,
   RiLogoutBoxRLine,
   RiCloseLine,
+  RiShieldUserLine,
 } from "react-icons/ri";
 
 function Header() {
@@ -33,12 +34,23 @@ function Header() {
   });
   const [searchLoading, setSearchLoading] = useState(false);
   const searchInputRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   const cart = useCartStore((state) => state.cart);
   const totalItems = cart.length;
 
+  // بستن منوی کشویی با کلیک خارج از آن
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // منبع حقیقت وضعیت کاربر همیشه سرور (کوکی httpOnly) هست، نه localStorage
-  // localStorage فقط برای نمایش سریع در بارگذاری اولیه (قبل از رسیدن پاسخ fetch) استفاده می‌شه
   const fetchUser = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/me");
@@ -58,7 +70,7 @@ function Header() {
   useEffect(() => {
     setIsMounted(true);
 
-    // نمایش فوری از کش قدیمی (تجربه‌ی کاربری بهتر، از فلش زدن جلوگیری می‌کنه)
+    // نمایش فوری از کش قدیمی برای جلوگیری از فلش زدن
     if (typeof window !== "undefined") {
       const savedUser = localStorage.getItem("user");
       if (savedUser) {
@@ -70,11 +82,9 @@ function Header() {
       }
     }
 
-    // سپس همیشه از سرور تازه‌ترین اطلاعات رو می‌گیریم و جایگزین می‌کنیم
+    // گرفتن تازه‌ترین اطلاعات از سرور
     fetchUser();
 
-    // هر جای دیگه‌ی برنامه که اطلاعات کاربر عوض بشه (ویرایش پروفایل، تکمیل ثبت‌نام و ...)
-    // این event رو dispatch می‌کنه تا هدر بدون نیاز به رفرش کامل صفحه به‌روز بشه
     window.addEventListener("auth-changed", fetchUser);
     return () => window.removeEventListener("auth-changed", fetchUser);
   }, [fetchUser]);
@@ -188,7 +198,7 @@ function Header() {
               </Link>
 
               {isMounted && user ? (
-                <div className="relative">
+                <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#151516] px-3 py-2 text-sm text-white transition-all hover:border-[#CD9F63]/50 cursor-pointer"
@@ -213,6 +223,19 @@ function Header() {
                         <RiUserLine className="text-base" />
                         حساب کاربری
                       </Link>
+
+                      {/* بررسی ادمین بودن کاربر */}
+                      {user?.isAdmin === true && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-gray-300 transition-colors hover:bg-white/5 hover:text-[#CD9F63]"
+                        >
+                          <RiShieldUserLine className="text-base" />
+                          پنل مدیریت
+                        </Link>
+                      )}
+
                       <button
                         onClick={handleLogout}
                         disabled={loggingOut}

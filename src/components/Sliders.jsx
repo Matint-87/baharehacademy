@@ -5,7 +5,7 @@ import Slider from "./Slider";
 function Sliders() {
   return (
     <section className="my-8 w-full px-4 sm:my-10 sm:px-8 lg:px-20">
-      <div className="mx-auto flex min-h-105 w-full max-w-400 flex-col">
+      <div className="mx-auto flex min-h-105 w-full 2xl:w-[70%] max-w-400 flex-col">
         {/* Header */}
         <div className="flex min-h-17.5 items-center justify-between gap-4">
           <h2 className="text-base font-bold text-white sm:text-lg">

@@ -6,13 +6,21 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = 10; // تعداد سفارش در هر صفحه
+    const skip = (page - 1) * limit;
 
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "شناسه کاربر ارسال نشده است" }, { status: 400 });
+    let whereCondition = {};
+    if (userId) {
+      whereCondition.userId = Number(userId);
     }
 
+    // دریافت کل تعداد برای صفحه‌بندی
+    const totalCount = await prisma.order.count({ where: whereCondition });
+
+    // دریافت سفارش‌ها با احتساب صفحه‌بندی
     const orders = await prisma.order.findMany({
-      where: { userId: Number(userId) }, // اگر id در دیتابیس شما عدد است Number بگذارید، اگر رشته است بگذارید خود userId
+      where: whereCondition,
       include: {
         items: {
           include: {
@@ -22,11 +30,18 @@ export async function GET(req) {
         },
       },
       orderBy: { createdAt: "desc" },
+      skip: skip,
+      take: limit,
     });
 
-    return NextResponse.json({ success: true, orders });
+    return NextResponse.json({
+      success: true,
+      orders,
+      totalCount,
+      hasMore: skip + orders.length < totalCount,
+    });
   } catch (error) {
-    console.error("User Orders API Error:", error);
+    console.error("Orders API Error:", error);
     return NextResponse.json({ success: false, error: "خطای سرور" }, { status: 500 });
   }
 }
