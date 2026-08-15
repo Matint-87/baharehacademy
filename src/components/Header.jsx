@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCartStore } from "@/src/store/useCartStore";
@@ -24,19 +24,37 @@ function Header() {
   const [isMounted, setIsMounted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // استیت‌های مربوط به مدال و جستجوی پیشرفته
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState({ courses: [], products: [], recipe: [] });
   const [searchLoading, setSearchLoading] = useState(false);
   const searchInputRef = useRef(null);
 
-  // گرفتن تعداد اقلام سبد خرید از Zustand
   const cart = useCartStore((state) => state.cart);
   const totalItems = cart.length;
 
+  // منبع حقیقت وضعیت کاربر همیشه سرور (کوکی httpOnly) هست، نه localStorage
+  // localStorage فقط برای نمایش سریع در بارگذاری اولیه (قبل از رسیدن پاسخ fetch) استفاده می‌شه
+  const fetchUser = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (!res.ok) {
+        setUser(null);
+        localStorage.removeItem("user");
+        return;
+      }
+      const data = await res.json();
+      setUser(data.user);
+      localStorage.setItem("user", JSON.stringify(data.user));
+    } catch (e) {
+      console.error("Error fetching user session:", e);
+    }
+  }, []);
+
   useEffect(() => {
     setIsMounted(true);
+
+    // نمایش فوری از کش قدیمی (تجربه‌ی کاربری بهتر، از فلش زدن جلوگیری می‌کنه)
     if (typeof window !== "undefined") {
       const savedUser = localStorage.getItem("user");
       if (savedUser) {
@@ -47,7 +65,15 @@ function Header() {
         }
       }
     }
-  }, []);
+
+    // سپس همیشه از سرور تازه‌ترین اطلاعات رو می‌گیریم و جایگزین می‌کنیم
+    fetchUser();
+
+    // هر جای دیگه‌ی برنامه که اطلاعات کاربر عوض بشه (ویرایش پروفایل، تکمیل ثبت‌نام و ...)
+    // این event رو dispatch می‌کنه تا هدر بدون نیاز به رفرش کامل صفحه به‌روز بشه
+    window.addEventListener("auth-changed", fetchUser);
+    return () => window.removeEventListener("auth-changed", fetchUser);
+  }, [fetchUser]);
 
   // فوکوس خودکار روی اینپوت سرچ وقتی مدال باز میشه
   useEffect(() => {
@@ -58,7 +84,6 @@ function Header() {
     }
   }, [searchModalOpen]);
 
-  // منطق جستجوی زنده (Live Search) با دیباونس
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults({ courses: [], products: [], recipe: [] });
@@ -115,22 +140,18 @@ function Header() {
       <>
         <header className="w-full h-17.5 flex justify-center items-center bg-[#101011]/95 backdrop-blur-[14px] sticky top-0 z-50 border-b border-[#1E1E1D]">
           <div className="w-[85%] flex items-center h-full justify-between">
-            {/* Logo */}
             <Link href="/" className="">
               <span className="text-2xl text-[#e24257]">C</span>
               <span className="text-xl text-[#FFDE63]">A</span>
             </Link>
 
-            {/* Desktop Nav */}
             <nav className="hidden lg:flex gap-6 h-5 px-5 items-center">
               {navLinks.map((item) => (
                 <Link
                   key={item.title}
                   href={item.href}
                   className={`text-sm font-medium transition-colors ${
-                    pathName === item.href
-                      ? "text-[#CD9F63]"
-                      : "text-white hover:text-[#CD9F63]"
+                    pathName === item.href ? "text-[#CD9F63]" : "text-white hover:text-[#CD9F63]"
                   }`}
                 >
                   {item.title}
@@ -138,9 +159,7 @@ function Header() {
               ))}
             </nav>
 
-            {/* Actions */}
             <div className="flex items-center gap-4">
-              {/* کلیک روی آیکون سرچ برای باز کردن مدال جستجو */}
               <button
                 onClick={() => setSearchModalOpen(true)}
                 className="text-2xl text-white cursor-pointer hover:text-[#CD9F63] transition-colors p-1 bg-transparent border-none"
@@ -148,8 +167,7 @@ function Header() {
               >
                 <RiSearchLine />
               </button>
-              
-              {/* Cart Icon */}
+
               <Link href="/cart">
                 <div className="relative p-2">
                   {totalItems > 0 && (
@@ -161,7 +179,6 @@ function Header() {
                 </div>
               </Link>
 
-              {/* Conditional Auth Section */}
               {isMounted && user ? (
                 <div className="relative">
                   <button
@@ -179,14 +196,14 @@ function Header() {
                   {dropdownOpen && (
                     <div className="absolute left-0 mt-2 w-48 rounded-2xl border border-white/10 bg-[#151516] p-2 shadow-2xl backdrop-blur-xl z-50">
                       <Link
-                        href="/profile"
+                        href="/account"
                         onClick={() => setDropdownOpen(false)}
                         className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-gray-300 transition-colors hover:bg-white/5 hover:text-[#CD9F63]"
                       >
                         <RiUserLine className="text-base" />
                         تکمیل / ویرایش پروفایل
                       </Link>
-                      
+
                       <button
                         onClick={handleLogout}
                         disabled={loggingOut}
@@ -210,11 +227,9 @@ function Header() {
           </div>
         </header>
 
-        {/* مدال جستجوی پیشرفته و سراسری */}
         {searchModalOpen && (
           <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-md pt-20 px-4">
             <div className="bg-[#151516] border border-white/10 rounded-3xl w-full max-w-2xl text-white overflow-hidden shadow-2xl">
-              {/* هدر مدال و اینپوت سرچ */}
               <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-white/5">
                 <RiSearchLine className="text-xl text-[#CD9F63]" />
                 <input
@@ -236,30 +251,20 @@ function Header() {
                 </button>
               </div>
 
-              {/* نتایج سرچ */}
               <div className="max-h-[60vh] overflow-y-auto p-4 space-y-6">
                 {searchLoading ? (
-                  <div className="text-center py-10 text-[#CD9F63] text-xs animate-pulse">
-                    در حال جستجو...
-                  </div>
+                  <div className="text-center py-10 text-[#CD9F63] text-xs animate-pulse">در حال جستجو...</div>
                 ) : !searchQuery.trim() ? (
-                  <div className="text-center py-10 text-gray-500 text-xs">
-                    عبارت مورد نظر خود را تایپ کنید...
-                  </div>
+                  <div className="text-center py-10 text-gray-500 text-xs">عبارت مورد نظر خود را تایپ کنید...</div>
                 ) : searchResults.courses.length === 0 &&
                   searchResults.products.length === 0 &&
                   searchResults.recipe.length === 0 ? (
-                  <div className="text-center py-10 text-gray-400 text-xs">
-                    هیچ موردی با این عبارت یافت نشد.
-                  </div>
+                  <div className="text-center py-10 text-gray-400 text-xs">هیچ موردی با این عبارت یافت نشد.</div>
                 ) : (
                   <>
-                    {/* بخش دوره‌ها */}
                     {searchResults.courses.length > 0 && (
                       <div>
-                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">
-                          دوره‌های آموزشی
-                        </h3>
+                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">دوره‌های آموزشی</h3>
                         <div className="space-y-2">
                           {searchResults.courses.map((course) => (
                             <Link
@@ -271,9 +276,7 @@ function Header() {
                               }}
                               className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all"
                             >
-                              {course.image && (
-                                <img src={course.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                              )}
+                              {course.image && <img src={course.image} alt="" className="w-10 h-10 rounded-lg object-cover" />}
                               <div>
                                 <h4 className="text-sm font-medium text-white">{course.title}</h4>
                                 <p className="text-[11px] text-gray-400">مدرس: {course.instructor}</p>
@@ -284,12 +287,9 @@ function Header() {
                       </div>
                     )}
 
-                    {/* بخش محصولات */}
                     {searchResults.products.length > 0 && (
                       <div>
-                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">
-                          محصولات
-                        </h3>
+                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">محصولات</h3>
                         <div className="space-y-2">
                           {searchResults.products.map((product) => (
                             <Link
@@ -301,9 +301,7 @@ function Header() {
                               }}
                               className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all"
                             >
-                              {product.image && (
-                                <img src={product.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                              )}
+                              {product.image && <img src={product.image} alt="" className="w-10 h-10 rounded-lg object-cover" />}
                               <div>
                                 <h4 className="text-sm font-medium text-white">{product.title}</h4>
                                 <p className="text-[11px] text-gray-400">
@@ -316,12 +314,9 @@ function Header() {
                       </div>
                     )}
 
-                    {/* بخش دستور پخت */}
                     {searchResults.recipe.length > 0 && (
                       <div>
-                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">
-                          دستور پخت‌ها
-                        </h3>
+                        <h3 className="text-xs font-bold text-[#CD9F63] mb-3 border-b border-white/5 pb-1">دستور پخت‌ها</h3>
                         <div className="space-y-2">
                           {searchResults.recipe.map((recipe) => (
                             <Link
@@ -333,9 +328,7 @@ function Header() {
                               }}
                               className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all"
                             >
-                              {recipe.image && (
-                                <img src={recipe.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                              )}
+                              {recipe.image && <img src={recipe.image} alt="" className="w-10 h-10 rounded-lg object-cover" />}
                               <div>
                                 <h4 className="text-sm font-medium text-white">{recipe.title}</h4>
                                 <p className="text-[11px] text-gray-400">آماده‌سازی: {recipe.prepTime}</p>
@@ -352,7 +345,6 @@ function Header() {
           </div>
         )}
 
-        {/* Mobile Bottom Nav */}
         <nav className="fixed backdrop-blur-[14px] bg-[#101011]/40 bottom-0 left-0 w-full shadow-md flex justify-around items-center py-2 lg:hidden z-50 border-t border-[#1E1E1D]">
           {navLinks.map((item) => (
             <Link

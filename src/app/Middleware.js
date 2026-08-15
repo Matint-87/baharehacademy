@@ -8,7 +8,13 @@ const SESSION_COOKIE_NAME = "session_token";
 // مسیرهایی که فقط کاربر لاگین‌کرده (دارای سشن معتبر) اجازه‌ی دیدنشون رو داره
 // نکته: "/reset-password" هم اینجاست چون فقط بعد از تایید OTP در مسیر فراموشی رمز
 // (که خودش یک سشن می‌سازه) قابل دسترسیه
-const PROTECTED_ROUTES = ["/profile", "/reset-password", "/orders", "/checkout"];
+const PROTECTED_ROUTES = [
+  "/profile",
+  "/reset-password",
+  "/orders",
+  "/checkout",
+  "/account",
+];
 
 // مسیرهایی که کاربر لاگین‌کرده نباید دوباره ببینتشون
 const AUTH_ROUTES = ["/login"];
@@ -30,7 +36,9 @@ export async function middleware(request) {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = await verifySession(token);
 
-  const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+  const isProtectedRoute = PROTECTED_ROUTES.some((route) =>
+    pathname.startsWith(route),
+  );
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
 
   // اگه کاربر لاگین نیست و می‌خواد بره صفحه‌ی محافظت‌شده -> بفرست به لاگین
@@ -58,6 +66,7 @@ export const config = {
   matcher: [
     "/profile/:path*",
     "/reset-password/:path*",
+    "/account/:path*",
     "/orders/:path*",
     "/checkout/:path*",
     "/login",
