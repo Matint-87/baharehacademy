@@ -1,22 +1,22 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // مسیر فایل پرایزما در پروژه شما
+import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth"; // این خط جا افتاده بود
 
-export async function GET(req) {
+// سفارشات کاربر لاگین‌کرده - همیشه از روی سشن، هرگز از روی userId ارسالی کلاینت
+export async function GET(request) {
+  const session = await getSession();
+
+  if (!session?.userId) {
+    return NextResponse.json(
+      { success: false, error: "ابتدا وارد حساب کاربری خود شوید." },
+      { status: 401 }
+    );
+  }
+
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "شناسه کاربر ارسال نشده است" },
-        { status: 400 }
-      );
-    }
-
-    // جستجوی سفارشات کاربر در دیتابیس (اصلاح فاصله بین await و prisma)
     const orders = await prisma.order.findMany({
-      where: { 
-        userId: Number(userId) // اگر فیلد userId در دیتابیس شما از نوع String است، متد Number را بردارید
+      where: {
+        userId: session.userId,
       },
       include: {
         items: {
@@ -31,7 +31,7 @@ export async function GET(req) {
 
     return NextResponse.json({ success: true, orders });
   } catch (error) {
-    console.error("API Orders Error:", error);
+    console.error("Error fetching user orders:", error);
     return NextResponse.json(
       { success: false, error: "خطای داخلی سرور" },
       { status: 500 }

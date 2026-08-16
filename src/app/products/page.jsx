@@ -66,25 +66,24 @@ export default function ProductsPage() {
 
   const handleAddToCart = (product) => {
     const qty = quantities[product.id] || 250;
-    const calculatedPrice = (product.pricePerUnit / 1000) * qty;
 
     const cartItem = {
-      id: `${product.id}-${qty}`,
-      title: `${product.title} (${qty} گرم)`,
-      price: Math.round(calculatedPrice),
-      instructor: product.category,
-      quantity: qty,
+      id: product.id, // شناسه‌ی واقعی محصول - نه رشته‌ی ترکیبی
+      title: product.title,
+      pricePerUnit: product.pricePerUnit,
+      unitType: product.unitType,
+      step: product.step,
+      category: product.category,
+      image: product.image,
     };
 
-    const res = addToCart(cartItem);
+    const res = addToCart(cartItem, "PRODUCT", qty); // itemType و quantity صریح فرستاده می‌شه
     if (res.success) {
       toast.success(`${product.title} (${qty} گرم) به سبد خرید اضافه شد!`, {
         theme: "dark",
       });
     } else {
-      toast.info("این محصول با این مقدار در سبد خرید موجود است.", {
-        theme: "dark",
-      });
+      toast.info(res.message, { theme: "dark" });
     }
   };
 
@@ -114,7 +113,7 @@ export default function ProductsPage() {
             {products.map((product) => {
               const currentQty = quantities[product.id] || 250;
               const currentPrice = Math.round(
-                (product.pricePerUnit / 1000) * currentQty
+                (product.pricePerUnit / 1000) * currentQty,
               );
 
               return (
@@ -143,13 +142,13 @@ export default function ProductsPage() {
                     <span className="text-xs text-[#CD9F63] bg-[#CD9F63]/10 px-3 py-1 rounded-full">
                       {product.category}
                     </span>
-                    
+
                     <Link href={`/products/${product.id}`} className="block">
                       <h2 className="text-lg font-bold text-white mt-3 hover:text-[#CD9F63] transition-colors">
                         {product.title}
                       </h2>
                     </Link>
-                    
+
                     <p className="mt-2 text-xs text-gray-400 line-clamp-2">
                       {product.description}
                     </p>
@@ -184,9 +183,7 @@ export default function ProductsPage() {
                     </div>
 
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs text-gray-400">
-                        قیمت نهایی:
-                      </span>
+                      <span className="text-xs text-gray-400">قیمت نهایی:</span>
                       <span className="text-base font-bold text-[#CD9F63]">
                         {currentPrice.toLocaleString()} تومان
                       </span>

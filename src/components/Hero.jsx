@@ -47,9 +47,9 @@ export default function Hero() {
       {/* Hero Content */}
       <div className="relative z-10 flex min-h-120 items-center px-5 pt-8 text-white sm:px-10 md:min-h-125 lg:px-20">
         <div className="flex w-full max-w-xl flex-col items-center gap-5 text-center lg:items-start lg:text-right">
-          <h1 className="text-2xl font-bold leading-[1.8] sm:text-3xl md:text-4xl lg:text-5xl">
+          <h1 className="text-2xl font-bold leading-[1.8] sm:text-3xl md:text-4xl">
             هنر آشپزی را حرفه‌ای بیاموزید با{" "}
-            <span className="text-[#CD9F63]">دوره‌های</span> آموزشی آکادمی ما
+            <span className="text-[#CD9F63]">دوره‌های</span> آموزشی آکادمی بهاره
           </h1>
 
           <p className="max-w-lg text-sm leading-8 text-white/80 sm:text-base">

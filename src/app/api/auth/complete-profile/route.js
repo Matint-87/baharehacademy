@@ -10,10 +10,11 @@ export async function POST(request) {
       return NextResponse.json({ error: "ابتدا وارد حساب کاربری خود شوید." }, { status: 401 });
     }
 
-    const { firstName, lastName, address, postalCode, password } = await request.json();
+    const { firstName, lastName, addressDetail, postalCode, nationalCode, age, image, password } = await request.json();
 
-    if (!firstName || !lastName || !address || !postalCode || !password) {
-      return NextResponse.json({ error: "تمام فیلدها الزامی است." }, { status: 400 });
+    // بررسی فیلدهای اجباری
+    if (!firstName || !lastName || !addressDetail || !postalCode || !password) {
+      return NextResponse.json({ error: "تمام فیلدهای ستاره‌دار الزامی است." }, { status: 400 });
     }
 
     if (!isPasswordStrong(password)) {
@@ -37,15 +38,35 @@ export async function POST(request) {
       );
     }
 
+    // اصلاح مقدار کد ملی: اگر خالی بود تبدیل به null شود، در غیر این صورت بررسی تکراری نبودن
+    const formattedNationalCode = nationalCode && nationalCode.trim() !== "" ? nationalCode.trim() : null;
+
+    if (formattedNationalCode) {
+      const duplicateUser = await prisma.user.findUnique({
+        where: { nationalCode: formattedNationalCode },
+      });
+
+      if (duplicateUser && duplicateUser.id !== session.userId) {
+        return NextResponse.json(
+          { error: "این کد ملی متعلق به کاربر دیگری است." },
+          { status: 400 }
+        );
+      }
+    }
+
     const hashedPassword = await hashPassword(password);
 
+    // به‌روزرسانی اطلاعات کاربر در دیتابیس با مدل جدید Prisma
     const updatedUser = await prisma.user.update({
       where: { id: session.userId },
       data: {
         firstName,
         lastName,
-        addressDetail: address,
+        addressDetail,
         postalCode,
+        nationalCode: formattedNationalCode,
+        age: age ? Number(age) : null,
+        image: image && image.trim() !== "" ? image.trim() : null,
         password: hashedPassword,
       },
     });
@@ -57,6 +78,15 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("Error in complete-profile:", error);
+    
+    // مدیریت خطای اختصاصی پراسما برای فیلد یکتا (Unique constraint)
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: "اطلاعات وارد شده (مانند کد ملی) تکراری است." },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({ error: "خطای سرور در ذخیره اطلاعات رخ داد." }, { status: 500 });
   }
 }

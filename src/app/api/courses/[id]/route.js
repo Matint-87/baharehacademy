@@ -13,7 +13,9 @@ export async function GET(request, { params }) {
       return NextResponse.json({ success: false, error: "دوره پیدا نشد" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, course });
+    const isFinished = course.endDate ? new Date(course.endDate) < new Date() : false;
+
+    return NextResponse.json({ success: true, course: { ...course, isFinished } });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ success: false, error: "خطای سرور" }, { status: 500 });

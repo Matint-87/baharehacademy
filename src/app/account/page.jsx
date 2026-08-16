@@ -14,6 +14,9 @@ import {
   FiMapPin,
   FiMail,
   FiSave,
+  FiCamera,
+  FiHash,
+  FiCalendar,
 } from "react-icons/fi";
 
 const orderStatusMap = {
@@ -56,8 +59,12 @@ export default function UserProfilePage() {
     lastName: "",
     address: "",
     postalCode: "",
+    age: "",
+    nationalCode: "",
+    image: "",
   });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // لغو سفارش
   const [cancellingOrderId, setCancellingOrderId] = useState(null);
@@ -81,12 +88,15 @@ export default function UserProfilePage() {
           lastName: currentUser.lastName || "",
           address: currentUser.address || currentUser.addressDetail || "",
           postalCode: currentUser.postalCode || "",
+          age: currentUser.age ?? "",
+          nationalCode: currentUser.nationalCode || "",
+          image: currentUser.image || "",
         });
 
         const userId = currentUser.id;
 
         // ۲. گرفتن سفارشات کاربر بر اساس اسکیما Order
-        const ordersRes = await fetch(`/api/users/orders?userId=${userId}`);
+        const ordersRes = await fetch(`/api/users/orders`);
         const ordersData = await ordersRes.json();
         if (ordersData.success) {
           setOrders(ordersData.orders || []);
@@ -128,6 +138,38 @@ export default function UserProfilePage() {
     }
   };
 
+  // آپلود عکس پروفایل
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("حجم تصویر نباید بیشتر از ۲ مگابایت باشد");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+
+      const res = await fetch("/api/auth/upload-avatar", {
+        method: "POST",
+        credentials: "include",
+        body: uploadFormData,
+      });
+      const json = await res.json();
+
+      if (!json.success) throw new Error(json.error || "خطا در آپلود تصویر");
+
+      setFormData((prev) => ({ ...prev, image: json.url }));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   // ذخیره تنظیمات حساب کاربری
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -136,11 +178,15 @@ export default function UserProfilePage() {
       const res = await fetch("/api/auth/update-info", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          age: formData.age ? Number(formData.age) : null,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
         alert("اطلاعات با موفقیت به‌روزرسانی شد.");
+        if (data.user) setUser((prev) => ({ ...prev, ...data.user }));
       } else {
         alert(data.error || "خطا در ذخیره اطلاعات");
       }
@@ -201,9 +247,17 @@ export default function UserProfilePage() {
         {/* هدر حساب کاربری */}
         <div className="bg-[#151516] border border-white/10 p-6 rounded-2xl flex justify-between items-center gap-4 shadow-lg">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-[#CD9F63]/10 border border-[#CD9F63]/20 flex items-center justify-center text-[#CD9F63] text-xl font-bold">
-              {user?.firstName ? user.firstName[0] : <FiUser />}
-            </div>
+            {user?.image ? (
+              <img
+                src={user.image}
+                alt=""
+                className="w-12 h-12 rounded-full object-cover border border-[#CD9F63]/20"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-[#CD9F63]/10 border border-[#CD9F63]/20 flex items-center justify-center text-[#CD9F63] text-xl font-bold">
+                {user?.firstName ? user.firstName[0] : <FiUser />}
+              </div>
+            )}
             <div>
               <h1 className="text-sm sm:text-base font-bold">
                 سلام،{" "}
@@ -461,6 +515,39 @@ export default function UserProfilePage() {
                   ویرایش اطلاعات حساب کاربری
                 </h2>
                 <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  {/* عکس پروفایل */}
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      عکس پروفایل
+                    </label>
+                    <div className="flex items-center gap-4">
+                      {formData.image ? (
+                        <img
+                          src={formData.image}
+                          alt=""
+                          className="w-14 h-14 rounded-full object-cover border border-[#CD9F63]/20"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-full bg-[#0d0d0e] border border-white/10 flex items-center justify-center text-gray-500">
+                          <FiUser className="text-xl" />
+                        </div>
+                      )}
+                      <label className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-xs cursor-pointer hover:bg-white/10 transition">
+                        <FiCamera />
+                        <span>
+                          {uploadingImage ? "در حال آپلود..." : "تغییر عکس"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          disabled={uploadingImage}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">
@@ -494,6 +581,46 @@ export default function UserProfilePage() {
                             setFormData({
                               ...formData,
                               lastName: e.target.value,
+                            })
+                          }
+                          className="w-full bg-transparent text-xs text-white focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">
+                        سن
+                      </label>
+                      <div className="flex items-center gap-2 bg-[#0d0d0e] border border-white/10 rounded-xl px-3 py-2.5 focus-within:border-[#CD9F63]">
+                        <FiCalendar className="text-[#CD9F63] shrink-0" />
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.age}
+                          onChange={(e) =>
+                            setFormData({ ...formData, age: e.target.value })
+                          }
+                          className="w-full bg-transparent text-xs text-white focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">
+                        کد ملی
+                      </label>
+                      <div className="flex items-center gap-2 bg-[#0d0d0e] border border-white/10 rounded-xl px-3 py-2.5 focus-within:border-[#CD9F63]">
+                        <FiHash className="text-[#CD9F63] shrink-0" />
+                        <input
+                          type="text"
+                          maxLength={10}
+                          value={formData.nationalCode}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              nationalCode: e.target.value,
                             })
                           }
                           className="w-full bg-transparent text-xs text-white focus:outline-none"
@@ -542,7 +669,7 @@ export default function UserProfilePage() {
 
                   <button
                     type="submit"
-                    disabled={savingSettings}
+                    disabled={savingSettings || uploadingImage}
                     className="flex items-center gap-2 px-5 py-2.5 bg-[#CD9F63] text-black font-bold text-xs rounded-xl transition shadow-md hover:bg-[#b88c53] disabled:opacity-50"
                   >
                     <FiSave />

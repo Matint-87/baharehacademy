@@ -22,6 +22,8 @@ export async function GET(request) {
           instructor: true,
           description: true,
           image: true,
+          startDate: true,
+          endDate: true,
           createdAt: true,
         },
         orderBy: { createdAt: "desc" },
@@ -29,9 +31,17 @@ export async function GET(request) {
       prisma.course.count(),
     ]);
 
+    // وضعیت تمام‌شده به‌صورت خودکار از روی endDate محاسبه میشه
+    // فرانت با isFinished می‌تونه دوره رو خط‌خورده نشون بده و دکمه‌ی ثبت‌نام رو غیرفعال کنه
+    const now = new Date();
+    const coursesWithStatus = courses.map((c) => ({
+      ...c,
+      isFinished: c.endDate ? new Date(c.endDate) < now : false,
+    }));
+
     return NextResponse.json({
       success: true,
-      courses,
+      courses: coursesWithStatus,
       totalCount,
       hasMore: skip + courses.length < totalCount,
     });
@@ -49,10 +59,17 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { title, description, price, duration, instructor, image } = body;
+    const { title, description, price, duration, instructor, image, startDate, endDate } = body;
 
     if (!title?.trim() || !instructor?.trim()) {
       return NextResponse.json({ success: false, error: "عنوان و مدرس الزامی است" }, { status: 400 });
+    }
+
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      return NextResponse.json(
+        { success: false, error: "تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد" },
+        { status: 400 }
+      );
     }
 
     const newCourse = await prisma.course.create({
@@ -63,6 +80,8 @@ export async function POST(request) {
         duration,
         instructor: instructor.trim(),
         image,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
       },
     });
 
@@ -81,10 +100,17 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
-    const { id, title, description, price, duration, instructor, image } = body;
+    const { id, title, description, price, duration, instructor, image, startDate, endDate } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: "شناسه دوره ارسال نشده است" }, { status: 400 });
+    }
+
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      return NextResponse.json(
+        { success: false, error: "تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد" },
+        { status: 400 }
+      );
     }
 
     const updatedCourse = await prisma.course.update({
@@ -96,6 +122,8 @@ export async function PUT(request) {
         duration,
         instructor,
         image,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
       },
     });
 

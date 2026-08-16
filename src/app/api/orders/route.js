@@ -1,38 +1,33 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession, requireAdmin } from "@/lib/auth";
 
-// ۱. دریافت سفارشات (مورد استفاده در پنل ادمین)
-export async function GET(req) {
+const PAGE_SIZE = 15;
+
+// GET: فقط ادمین - لیست همه‌ی سفارش‌ها (صفحه‌بندی‌شده)
+export async function GET(request) {
+  const admin = await requireAdmin();
+  if (!admin.ok) {
+    return NextResponse.json({ error: admin.error }, { status: admin.status });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const skip = (page - 1) * PAGE_SIZE;
+
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-    const page = Number(searchParams.get("page")) || 1;
-    const limit = 10; // تعداد سفارش در هر صفحه
-    const skip = (page - 1) * limit;
-
-    let whereCondition = {};
-    if (userId) {
-      whereCondition.userId = Number(userId);
-    }
-
-    // دریافت کل تعداد برای صفحه‌بندی
-    const totalCount = await prisma.order.count({ where: whereCondition });
-
-    // دریافت سفارش‌ها با احتساب صفحه‌بندی
-    const orders = await prisma.order.findMany({
-      where: whereCondition,
-      include: {
-        items: {
-          include: {
-            product: true,
-            course: true,
-          },
+    const [orders, totalCount] = await Promise.all([
+      prisma.order.findMany({
+        skip,
+        take: PAGE_SIZE,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: { select: { firstName: true, lastName: true, phoneNumber: true } },
+          items: true,
         },
-      },
-      orderBy: { createdAt: "desc" },
-      skip: skip,
-      take: limit,
-    });
+      }),
+      prisma.order.count(),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -41,88 +36,88 @@ export async function GET(req) {
       hasMore: skip + orders.length < totalCount,
     });
   } catch (error) {
-    console.error("Orders API Error:", error);
-    return NextResponse.json({ success: false, error: "خطای سرور" }, { status: 500 });
+    console.error("Error fetching orders:", error);
+    return NextResponse.json({ error: "خطا در دریافت سفارش‌ها." }, { status: 500 });
   }
 }
 
-// ۲. ثبت سفارش جدید (مورد استفاده در صفحه سبد خرید /cart)
-export async function POST(req) {
-  try {
-    const body = await req.json();
-    const { userId, items, recipientName, recipientPhone, shippingAddress, postalCode } = body;
+// POST: ثبت سفارش جدید توسط کاربر لاگین‌کرده (تسویه‌حساب سبد خرید)
+// نکته‌ی امنیتی مهم: قیمت و موجودی هیچ‌وقت از کلاینت قبول نمی‌شه، همیشه از دیتابیس خونده می‌شه
+export async function POST(request) {
+  const session = await getSession();
+  if (!session?.userId) {
+    return NextResponse.json({ error: "ابتدا وارد حساب کاربری خود شوید." }, { status: 401 });
+  }
 
-    if (!userId || !items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ success: false, error: "اطلاعات سفارش ناقص است" }, { status: 400 });
+  try {
+    const { items, recipientName, recipientPhone, shippingAddress, postalCode } = await request.json();
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "سبد خرید خالی است." }, { status: 400 });
+    }
+    if (!recipientName || !recipientPhone || !shippingAddress || !postalCode) {
+      return NextResponse.json({ error: "اطلاعات گیرنده کامل نیست." }, { status: 400 });
     }
 
-    // دریافت اطلاعات کاربر برای مقادیر پیش‌فرض
-    const user = await prisma.user.findUnique({
-      where: { id: Number(userId) },
-    });
+    const order = await prisma.$transaction(async (tx) => {
+      let totalAmount = 0;
+      const orderItemsData = [];
 
-    const finalRecipientName = recipientName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'کاربر مهمان';
-    const finalRecipientPhone = recipientPhone || user?.phoneNumber || '09000000000';
-    const finalShippingAddress = shippingAddress || 'آدرس پیش‌فرض';
-    const finalPostalCode = postalCode || '0000000000';
+      for (const cartItem of items) {
+        if (cartItem.itemType === "PRODUCT") {
+          const product = await tx.product.findUnique({ where: { id: cartItem.productId } });
+          if (!product) throw new Error("یکی از محصولات سبد خرید دیگر موجود نیست.");
+          if (product.stock < cartItem.quantity) {
+            throw new Error(`موجودی «${product.title}» کافی نیست (موجودی فعلی: ${product.stock}).`);
+          }
 
-    // محاسبه مبلغ کل و اطلاعات دوره‌ها
-    const courses = await prisma.course.findMany({
-      where: { id: { in: items } },
-    });
+          await tx.product.update({
+            where: { id: product.id },
+            data: { stock: { decrement: cartItem.quantity } },
+          });
 
-    const totalAmount = courses.reduce((sum, course) => sum + course.price, 0);
+          totalAmount += product.pricePerUnit * cartItem.quantity;
+          orderItemsData.push({
+            itemType: "PRODUCT",
+            productId: product.id,
+            titleSnapshot: product.title,
+            quantity: cartItem.quantity,
+            unitPrice: product.pricePerUnit,
+          });
+        } else if (cartItem.itemType === "COURSE") {
+          const course = await tx.course.findUnique({ where: { id: cartItem.courseId } });
+          if (!course) throw new Error("یکی از دوره‌های سبد خرید دیگر موجود نیست.");
 
-    // ایجاد سفارش جدید و ثبت اقلام مرتبط با آن در دیتابیس مطابق با اسکیما
-    const newOrder = await prisma.order.create({
-      data: {
-        userId: Number(userId),
-        totalAmount,
-        status: "PROCESSING",
-        recipientName: finalRecipientName,
-        recipientPhone: finalRecipientPhone,
-        shippingAddress: finalShippingAddress,
-        postalCode: finalPostalCode,
-        items: {
-          create: courses.map((course) => ({
+          totalAmount += course.price;
+          orderItemsData.push({
+            itemType: "COURSE",
             courseId: course.id,
-            itemType: "COURSE", // مقدار اجباری در OrderItem
-            titleSnapshot: course.title || "دوره آموزشی", // مقدار اجباری برای حفظ عنوان
-            unitPrice: course.price,
+            titleSnapshot: course.title,
             quantity: 1,
-          })),
+            unitPrice: course.price,
+          });
+        } else {
+          throw new Error("نوع آیتم سبد خرید نامعتبر است.");
+        }
+      }
+
+      return tx.order.create({
+        data: {
+          userId: session.userId,
+          totalAmount,
+          recipientName,
+          recipientPhone,
+          shippingAddress,
+          postalCode,
+          items: { create: orderItemsData },
         },
-      },
-      include: {
-        items: true,
-      },
+        include: { items: true },
+      });
     });
 
-    return NextResponse.json({ success: true, order: newOrder });
+    return NextResponse.json({ success: true, order });
   } catch (error) {
-    console.error("Order Creation Error:", error);
-    return NextResponse.json({ success: false, error: "خطا در ثبت سفارش در پایگاه داده" }, { status: 500 });
-  }
-}
-
-// ۳. ویرایش وضعیت سفارش (مورد استفاده در پنل ادمین)
-export async function PUT(req) {
-  try {
-    const body = await req.json();
-    const { id, status } = body;
-
-    if (!id || !status) {
-      return NextResponse.json({ success: false, error: "اطلاعات ناقص است" }, { status: 400 });
-    }
-
-    const updatedOrder = await prisma.order.update({
-      where: { id },
-      data: { status },
-    });
-
-    return NextResponse.json({ success: true, order: updatedOrder });
-  } catch (error) {
-    console.error("Order Update Error:", error);
-    return NextResponse.json({ success: false, error: "خطا در ویرایش سفارش" }, { status: 500 });
+    console.error("Error creating order:", error);
+    return NextResponse.json({ error: error.message || "خطا در ثبت سفارش." }, { status: 400 });
   }
 }

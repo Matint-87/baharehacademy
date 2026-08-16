@@ -5,7 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { useCartStore } from "@/src/store/useCartStore";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { FaShoppingBasket, FaPlus, FaMinus, FaArrowRight, FaClock, FaTag } from "react-icons/fa";
+import {
+  FaShoppingBasket,
+  FaPlus,
+  FaMinus,
+  FaArrowRight,
+  FaClock,
+  FaTag,
+} from "react-icons/fa";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -56,21 +63,24 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     if (!product) return;
 
-    const calculatedPrice = (product.pricePerUnit / 1000) * quantity;
-
     const cartItem = {
-      id: `${product.id}-${quantity}`,
-      title: `${product.title} (${quantity} گرم)`,
-      price: Math.round(calculatedPrice),
-      instructor: product.category,
-      quantity: quantity,
+      id: product.id,
+      title: product.title,
+      pricePerUnit: product.pricePerUnit,
+      unitType: product.unitType,
+      step: product.step,
+      category: product.category,
+      image: product.image,
     };
 
-    const res = addToCart(cartItem);
+    const res = addToCart(cartItem, "PRODUCT", quantity);
     if (res.success) {
-      toast.success(`${product.title} (${quantity} گرم) به سبد خرید اضافه شد!`, { theme: "dark" });
+      toast.success(
+        `${product.title} (${quantity} گرم) به سبد خرید اضافه شد!`,
+        { theme: "dark" },
+      );
     } else {
-      toast.info("این محصول با این مقدار در سبد خرید موجود است.", { theme: "dark" });
+      toast.info(res.message, { theme: "dark" });
     }
   };
 
@@ -134,8 +144,12 @@ export default function ProductDetailPage() {
                 <FaTag />
                 {product.category}
               </span>
-              <h1 className="text-2xl font-bold text-white mt-3">{product.title}</h1>
-              <p className="mt-4 text-sm text-gray-300 leading-relaxed">{product.description}</p>
+              <h1 className="text-2xl font-bold text-white mt-3">
+                {product.title}
+              </h1>
+              <p className="mt-4 text-sm text-gray-300 leading-relaxed">
+                {product.description}
+              </p>
             </div>
 
             <div className="mt-8 border-t border-white/10 pt-6">
@@ -149,7 +163,9 @@ export default function ProductDetailPage() {
                   >
                     <FaMinus />
                   </button>
-                  <span className="text-sm font-bold w-16 text-center">{quantity} گرم</span>
+                  <span className="text-sm font-bold w-16 text-center">
+                    {quantity} گرم
+                  </span>
                   <button
                     onClick={() => handleQuantityChange(1)}
                     className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer"

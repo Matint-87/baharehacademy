@@ -57,7 +57,7 @@ function Rezome() {
         <div className="flex flex-col text-right">
 
           <h1 className="text-2xl font-bold text-white sm:text-3xl">
-            چرا کوکینگ آکادمی؟
+            چرا بهاره آکادمی؟
           </h1>
 
           <p className="mt-4 max-w-xl text-sm leading-8 text-gray-400 sm:text-base">

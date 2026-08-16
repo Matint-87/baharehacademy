@@ -5,10 +5,23 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
+enum ItemType {
+  PRODUCT
+  COURSE
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
 
 model User {
-  id            Int       @id @default(autoincrement())
-  phoneNumber   String    @unique
+  id            Int     @id @default(autoincrement())
+  phoneNumber   String  @unique
   password      String?
 
   firstName     String?
@@ -16,8 +29,12 @@ model User {
   addressDetail String?
   postalCode    String?
 
-  isVerified    Boolean   @default(false)
-  isAdmin       Boolean   @default(false)
+  age          Int?
+  nationalCode String? @unique
+  image        String?
+
+  isVerified Boolean @default(false)
+  isAdmin    Boolean @default(false)
 
   otpCode       String?
   otpExpiresAt  DateTime?
@@ -29,37 +46,43 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  orders    Order[]
+
+  orders Order[]
+  cart   Cart?
 }
 
 model Course {
-  id          String   @id @default(uuid())
+  id          String @id @default(uuid())
   title       String
   description String
-  price       Float
+  price       Int
   duration    String
   instructor  String
   image       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  orderItems  OrderItem[]
+  startDate DateTime?
+  endDate   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+  cartItems  CartItem[]
 }
 
 model Product {
-  id           String   @id @default(uuid())
-  title        String
-  category     String
-  pricePerUnit Float
-  unitType     String   @default("gram")
-  step         Int      @default(100)
-  stock        Int      @default(0) 
-  image        String?
-  description  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String  @id @default(uuid())
+  title       String
+  category    String
+  price       Int     @default(0)
+  stock       Int     @default(0)
+  image       String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  orderItems   OrderItem[]
+  orderItems OrderItem[]
+  cartItems  CartItem[]
 }
 
 model Recipe {
@@ -74,32 +97,27 @@ model Recipe {
   updatedAt    DateTime @updatedAt
 }
 
-enum OrderStatus {
-  PENDING_PAYMENT 
-  PAID            
-  PROCESSING       
-  SHIPPED         
-  DELIVERED         
-  CANCELLED        
-}
-
 model Order {
   id     String @id @default(uuid())
   userId Int
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   status      OrderStatus @default(PENDING_PAYMENT)
-  totalAmount Float
+  totalAmount Int
 
   recipientName   String
   recipientPhone  String
   shippingAddress String
   postalCode      String
 
+  cancelReason String?
+
   items OrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
 }
 
 model OrderItem {
@@ -107,15 +125,48 @@ model OrderItem {
   orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  itemType String 
+  itemType ItemType
 
   productId String?
-  product   Product? @relation(fields: [productId], references: [id])
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   courseId String?
-  course   Course? @relation(fields: [courseId], references: [id])
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
 
-  titleSnapshot String 
+  titleSnapshot String
   quantity      Int
-  unitPrice     Float 
+  unitPrice     Int
+}
+
+model Cart {
+  id     String @id @default(uuid())
+  userId Int    @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CartItem {
+  id     String @id @default(uuid())
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  itemType ItemType
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  quantity Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+  @@unique([cartId, courseId])
 }

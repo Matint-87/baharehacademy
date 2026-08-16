@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaUser, FaMapMarkerAlt, FaMailBulk, FaSave, FaLock } from "react-icons/fa";
+import { FaUser, FaMapMarkerAlt, FaMailBulk, FaSave, FaLock, FaIdCard, FaCalendarAlt, FaImage } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 
-// حداقل ۸ کاراکتر + حداقل یک حرف + حداقل یک عدد (باید با سرور هماهنگ باشه)
+// حداقل ۸ کاراکتر + حداقل یک حرف + یک عدد
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 
 const profileSchema = Yup.object({
@@ -15,7 +15,16 @@ const profileSchema = Yup.object({
   postalCode: Yup.string()
     .matches(/^[0-9]{10}$/, "کد پستی باید دقیقاً ۱۰ رقم باشد.")
     .required("لطفاً کد پستی را وارد کنید."),
-  address: Yup.string().required("لطفاً آدرس دقیق پستی را وارد کنید."),
+  addressDetail: Yup.string().required("لطفاً آدرس دقیق پستی را وارد کنید."),
+  nationalCode: Yup.string()
+    .matches(/^[0-9]{10}$/, "کد ملی باید دقیقاً ۱۰ رقم باشد.")
+    .optional(),
+  age: Yup.number()
+    .transform((value, originalValue) => (originalValue === "" ? undefined : value))
+    .positive("سن باید یک عدد مثبت باشد.")
+    .integer("سن باید عدد صحیح باشد.")
+    .optional(),
+  image: Yup.string().url("فرمت لینک تصویر معتبر نیست.").optional(),
   password: Yup.string()
     .matches(PASSWORD_REGEX, "رمز عبور باید حداقل ۸ کاراکتر و شامل حرف و عدد باشد.")
     .required("لطفاً یک رمز عبور تعیین کنید."),
@@ -32,8 +41,11 @@ function ProfilePage() {
     initialValues: {
       firstName: "",
       lastName: "",
-      address: "",
+      addressDetail: "",
       postalCode: "",
+      nationalCode: "",
+      age: "",
+      image: "",
       password: "",
       confirmPassword: "",
     },
@@ -48,8 +60,11 @@ function ProfilePage() {
           body: JSON.stringify({
             firstName: values.firstName,
             lastName: values.lastName,
-            address: values.address,
+            addressDetail: values.addressDetail, // هماهنگ با Prisma
             postalCode: values.postalCode,
+            nationalCode: values.nationalCode || null,
+            age: values.age ? Number(values.age) : null,
+            image: values.image || null,
             password: values.password,
           }),
         });
@@ -62,7 +77,6 @@ function ProfilePage() {
             window.location.href = "/login";
             return;
           }
-          // اگه قبلاً ثبت‌نام کامل شده (تلاش برای ثبت‌نام تکراری)
           if (response.status === 409) {
             toast.error(data.error);
             window.location.href = "/login";
@@ -86,7 +100,6 @@ function ProfilePage() {
   });
 
   useEffect(() => {
-    // چون کوکی سشن httpOnly هست، وضعیت لاگین رو از سرور می‌پرسیم، نه از localStorage
     (async () => {
       try {
         const res = await fetch("/api/auth/me");
@@ -95,7 +108,6 @@ function ProfilePage() {
           return;
         }
         const data = await res.json();
-        // اگه کاربر از قبل پسورد داره یعنی ثبت‌نامش کامل شده - نباید اینجا بمونه
         if (data.user.hasPassword) {
           window.location.href = "/";
           return;
@@ -125,15 +137,12 @@ function ProfilePage() {
 
           <form onSubmit={formik.handleSubmit} className="flex flex-col gap-5">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              {/* نام */}
               <div>
                 <label className="mb-2 block text-right text-sm text-gray-400">نام</label>
-                <div
-                  className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
-                    formik.touched.firstName && formik.errors.firstName
-                      ? "border-red-500/70"
-                      : "border-white/10 focus-within:border-[#CD9F63]/70"
-                  }`}
-                >
+                <div className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
+                  formik.touched.firstName && formik.errors.firstName ? "border-red-500/70" : "border-white/10 focus-within:border-[#CD9F63]/70"
+                }`}>
                   <FaUser className="shrink-0 text-[#CD9F63]" />
                   <input
                     name="firstName"
@@ -150,15 +159,12 @@ function ProfilePage() {
                 )}
               </div>
 
+              {/* نام خانوادگی */}
               <div>
                 <label className="mb-2 block text-right text-sm text-gray-400">نام خانوادگی</label>
-                <div
-                  className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
-                    formik.touched.lastName && formik.errors.lastName
-                      ? "border-red-500/70"
-                      : "border-white/10 focus-within:border-[#CD9F63]/70"
-                  }`}
-                >
+                <div className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
+                  formik.touched.lastName && formik.errors.lastName ? "border-red-500/70" : "border-white/10 focus-within:border-[#CD9F63]/70"
+                }`}>
                   <FaUser className="shrink-0 text-[#CD9F63]" />
                   <input
                     name="lastName"
@@ -176,15 +182,49 @@ function ProfilePage() {
               </div>
             </div>
 
+            {/* کد ملی و سن (فیلدهای جدید مدل) */}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-right text-sm text-gray-400">کد ملی (اختیاری)</label>
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0f0f10] px-4 py-3 focus-within:border-[#CD9F63]/70">
+                  <FaIdCard className="shrink-0 text-[#CD9F63]" />
+                  <input
+                    name="nationalCode"
+                    value={formik.values.nationalCode}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    maxLength={10}
+                    placeholder="۰۱۲۳۴۵۶۷۸۹"
+                    className="w-full bg-transparent text-left text-sm text-white outline-none placeholder:text-gray-600"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-right text-sm text-gray-400">سن (اختیاری)</label>
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0f0f10] px-4 py-3 focus-within:border-[#CD9F63]/70">
+                  <FaCalendarAlt className="shrink-0 text-[#CD9F63]" />
+                  <input
+                    name="age"
+                    type="number"
+                    value={formik.values.age}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    placeholder="مثال: ۲۵"
+                    className="w-full bg-transparent text-left text-sm text-white outline-none placeholder:text-gray-600"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* کد پستی */}
             <div>
               <label className="mb-2 block text-right text-sm text-gray-400">کد پستی (۱۰ رقم)</label>
-              <div
-                className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
-                  formik.touched.postalCode && formik.errors.postalCode
-                    ? "border-red-500/70"
-                    : "border-white/10 focus-within:border-[#CD9F63]/70"
-                }`}
-              >
+              <div className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
+                formik.touched.postalCode && formik.errors.postalCode ? "border-red-500/70" : "border-white/10 focus-within:border-[#CD9F63]/70"
+              }`}>
                 <FaMailBulk className="shrink-0 text-[#CD9F63]" />
                 <input
                   name="postalCode"
@@ -202,19 +242,16 @@ function ProfilePage() {
               )}
             </div>
 
+            {/* آدرس دقیق پستی (هماهنگ با addressDetail در دیتابیس) */}
             <div>
               <label className="mb-2 block text-right text-sm text-gray-400">آدرس دقیق پستی</label>
-              <div
-                className={`flex items-start gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
-                  formik.touched.address && formik.errors.address
-                    ? "border-red-500/70"
-                    : "border-white/10 focus-within:border-[#CD9F63]/70"
-                }`}
-              >
+              <div className={`flex items-start gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
+                formik.touched.addressDetail && formik.errors.addressDetail ? "border-red-500/70" : "border-white/10 focus-within:border-[#CD9F63]/70"
+              }`}>
                 <FaMapMarkerAlt className="mt-1 shrink-0 text-[#CD9F63]" />
                 <textarea
-                  name="address"
-                  value={formik.values.address}
+                  name="addressDetail"
+                  value={formik.values.addressDetail}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   rows={3}
@@ -223,21 +260,18 @@ function ProfilePage() {
                   disabled={loading}
                 />
               </div>
-              {formik.touched.address && formik.errors.address && (
-                <span className="mt-1 block text-right text-[11px] text-red-400">{formik.errors.address}</span>
+              {formik.touched.addressDetail && formik.errors.addressDetail && (
+                <span className="mt-1 block text-right text-[11px] text-red-400">{formik.errors.addressDetail}</span>
               )}
             </div>
 
+            {/* رمز عبور و تکرار آن */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block text-right text-sm text-gray-400">رمز عبور</label>
-                <div
-                  className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
-                    formik.touched.password && formik.errors.password
-                      ? "border-red-500/70"
-                      : "border-white/10 focus-within:border-[#CD9F63]/70"
-                  }`}
-                >
+                <div className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
+                  formik.touched.password && formik.errors.password ? "border-red-500/70" : "border-white/10 focus-within:border-[#CD9F63]/70"
+                }`}>
                   <FaLock className="shrink-0 text-[#CD9F63]" />
                   <input
                     name="password"
@@ -257,13 +291,9 @@ function ProfilePage() {
 
               <div>
                 <label className="mb-2 block text-right text-sm text-gray-400">تکرار رمز عبور</label>
-                <div
-                  className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
-                    formik.touched.confirmPassword && formik.errors.confirmPassword
-                      ? "border-red-500/70"
-                      : "border-white/10 focus-within:border-[#CD9F63]/70"
-                  }`}
-                >
+                <div className={`flex items-center gap-3 rounded-xl border bg-[#0f0f10] px-4 py-3 transition-colors ${
+                  formik.touched.confirmPassword && formik.errors.confirmPassword ? "border-red-500/70" : "border-white/10 focus-within:border-[#CD9F63]/70"
+                }`}>
                   <FaLock className="shrink-0 text-[#CD9F63]" />
                   <input
                     name="confirmPassword"
