@@ -5,7 +5,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 
 export const metadata = {
-  title: "بهاره آکادمی",
+  title: "39501475",
   description: "آموزش آشپزی و فروش محصولات غذایی",
   icons: {
     icon: "/images/logo.ico",
@@ -16,7 +16,6 @@ export const metadata = {
     enamad: "39501475",
   },
 };
-
 export default function RootLayout({ children }) {
   return (
     <html lang="fa" dir="rtl">
