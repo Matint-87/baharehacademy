@@ -178,8 +178,8 @@ function Header() {
         <header className="w-full h-17.5 flex justify-center items-center bg-[#101011]/95 backdrop-blur-[14px] sticky top-0 z-50 border-b border-[#1E1E1D]">
           <div className="w-[85%] 2xl:w-[60%] flex items-center h-full justify-between">
             <Link href="/" className="">
-              <span className="text-2xl text-[#e24257]">Bahareh</span>
-              <span className="text-xl text-[#FFDE63]">Academy</span>
+              <span className="text-2xl text-[#e24257]">B</span>
+              <span className="text-xl text-[#FFDE63]">A</span>
             </Link>
 
             <nav className="hidden lg:flex gap-6 h-5 px-5 items-center">

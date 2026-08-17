@@ -5,16 +5,13 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 // de
 export const metadata = {
-  title: "39501475",
+  title: "بهاره آکادمی",
   description: "آموزش آشپزی و فروش محصولات غذایی",
   icons: {
     icon: "/images/logo.ico",
     shortcut: "/images/logo.ico",
     apple: "/images/logo.ico",
-  },
-  other: {
-    enamad: "39501475",
-  },
+  }
 };
 export default function RootLayout({ children }) {
   return (
