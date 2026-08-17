@@ -3,7 +3,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-
+// de
 export const metadata = {
   title: "39501475",
   description: "آموزش آشپزی و فروش محصولات غذایی",
