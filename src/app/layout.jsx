@@ -12,6 +12,9 @@ export const metadata = {
     shortcut: "/images/logo.ico",
     apple: "/images/logo.ico",
   },
+  other: {
+    enamad: "39501475",
+  },
 };
 
 export default function RootLayout({ children }) {
