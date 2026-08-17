@@ -50,13 +50,24 @@ export async function POST(request) {
   }
 
   try {
-    const { items, recipientName, recipientPhone, shippingAddress, postalCode } = await request.json();
+    const { items, deliveryMethod, recipientName, recipientPhone, shippingAddress, postalCode } =
+      await request.json();
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "سبد خرید خالی است." }, { status: 400 });
     }
-    if (!recipientName || !recipientPhone || !shippingAddress || !postalCode) {
+    if (deliveryMethod !== "PICKUP" && deliveryMethod !== "COURIER") {
+      return NextResponse.json({ error: "نحوه دریافت سفارش نامعتبر است." }, { status: 400 });
+    }
+    if (!recipientName || !recipientPhone) {
       return NextResponse.json({ error: "اطلاعات گیرنده کامل نیست." }, { status: 400 });
+    }
+    // آدرس و کد پستی فقط برای ارسال با پیک الزامی‌ان؛ در تحویل حضوری لازم نیستن
+    if (deliveryMethod === "COURIER" && (!shippingAddress || !postalCode)) {
+      return NextResponse.json(
+        { error: "آدرس و کد پستی برای ارسال با پیک الزامی است." },
+        { status: 400 }
+      );
     }
 
     const order = await prisma.$transaction(async (tx) => {
@@ -76,13 +87,14 @@ export async function POST(request) {
             data: { stock: { decrement: cartItem.quantity } },
           });
 
-          totalAmount += product.pricePerUnit * cartItem.quantity;
+          // نکته: فیلد قیمت تو مدل Product اسمش «price» هست، نه «pricePerUnit»
+          totalAmount += product.price * cartItem.quantity;
           orderItemsData.push({
             itemType: "PRODUCT",
             productId: product.id,
             titleSnapshot: product.title,
             quantity: cartItem.quantity,
-            unitPrice: product.pricePerUnit,
+            unitPrice: product.price,
           });
         } else if (cartItem.itemType === "COURSE") {
           const course = await tx.course.findUnique({ where: { id: cartItem.courseId } });
@@ -101,18 +113,24 @@ export async function POST(request) {
         }
       }
 
-      return tx.order.create({
+      const createdOrder = await tx.order.create({
         data: {
           userId: session.userId,
           totalAmount,
+          deliveryMethod,
           recipientName,
           recipientPhone,
-          shippingAddress,
-          postalCode,
+          shippingAddress: deliveryMethod === "COURIER" ? shippingAddress : null,
+          postalCode: deliveryMethod === "COURIER" ? postalCode : null,
           items: { create: orderItemsData },
         },
         include: { items: true },
       });
+
+      // خالی کردن سبد خرید کاربر بعد از ثبت موفق سفارش
+      await tx.cart.deleteMany({ where: { userId: session.userId } });
+
+      return createdOrder;
     });
 
     return NextResponse.json({ success: true, order });

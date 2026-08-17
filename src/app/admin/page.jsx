@@ -427,6 +427,7 @@ export default function Page() {
                   <th className="p-4">مشتری</th>
                   <th className="p-4">تعداد اقلام</th>
                   <th className="p-4">مبلغ کل</th>
+                  <th className="p-4">نحوه دریافت</th>
                   <th className="p-4">تاریخ</th>
                   <th className="p-4">وضعیت</th>
                   <th className="p-4 text-center">جزئیات</th>
@@ -440,6 +441,11 @@ export default function Page() {
                     </td>
                     <td className="p-4 text-xs text-gray-400">{order.items?.length || 0} قلم</td>
                     <td className="p-4 text-xs text-gray-300">{formatToman(order.totalAmount)}</td>
+                    <td className="p-4">
+                      <span className={`text-xs px-2 py-1 rounded-lg ${order.deliveryMethod === "PICKUP" ? "text-blue-400 bg-blue-500/10" : "text-purple-400 bg-purple-500/10"}`}>
+                        {order.deliveryMethod === "PICKUP" ? "حضوری" : "پیک"}
+                      </span>
+                    </td>
                     <td className="p-4 text-xs text-gray-400">{formatDate(order.createdAt)}</td>
                     <td className="p-4">
                       <select
@@ -487,10 +493,23 @@ export default function Page() {
             </div>
 
             <div className="space-y-3 text-sm">
+              <p>
+                <span className="text-gray-400">نحوه دریافت:</span>{" "}
+                <span className={orderDetailModal.deliveryMethod === "PICKUP" ? "text-blue-400" : "text-purple-400"}>
+                  {orderDetailModal.deliveryMethod === "PICKUP" ? "دریافت حضوری از فروشگاه" : "ارسال با پیک"}
+                </span>
+              </p>
               <p><span className="text-gray-400">گیرنده:</span> {orderDetailModal.recipientName}</p>
               <p><span className="text-gray-400">شماره تماس:</span> {orderDetailModal.recipientPhone}</p>
-              <p><span className="text-gray-400">کد پستی:</span> {orderDetailModal.postalCode}</p>
-              <p><span className="text-gray-400">آدرس:</span> {orderDetailModal.shippingAddress}</p>
+
+              {/* آدرس و کد پستی فقط برای سفارش‌های ارسال با پیک وجود دارن */}
+              {orderDetailModal.deliveryMethod === "COURIER" && (
+                <>
+                  <p><span className="text-gray-400">کد پستی:</span> {orderDetailModal.postalCode}</p>
+                  <p><span className="text-gray-400">آدرس:</span> {orderDetailModal.shippingAddress}</p>
+                </>
+              )}
+
               {orderDetailModal.cancelReason && (
                 <p><span className="text-gray-400">دلیل لغو:</span> {orderDetailModal.cancelReason}</p>
               )}
@@ -560,7 +579,6 @@ export default function Page() {
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm">
                   {currentList.map((item, index) => {
-                    console.log("USER DATA:", item);
                     const courseStatus = activeSection === "courses" ? getCourseStatus(item) : null;
                     return (
                       <tr key={`${item.id}-${index}`} className="hover:bg-white/5 transition-all">

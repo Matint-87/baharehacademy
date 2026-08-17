@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { FaTrash, FaArrowRight, FaShoppingBasket, FaMinus, FaPlus, FaSignInAlt } from "react-icons/fa";
+import { FaTrash, FaArrowRight, FaShoppingBasket, FaMinus, FaPlus, FaSignInAlt, FaStore, FaTruck } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -17,6 +17,7 @@ export default function CartPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [pendingItemId, setPendingItemId] = useState(null); // جلوگیری از کلیک‌های همزمان روی یک آیتم
 
+  const [deliveryMethod, setDeliveryMethod] = useState("COURIER"); // PICKUP | COURIER
   const [recipientName, setRecipientName] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
@@ -93,6 +94,7 @@ export default function CartPage() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "خطا در ویرایش سبد خرید");
       await loadCart(); // برای گرفتن total به‌روز شده از سرور
+      window.dispatchEvent(new Event("cart-changed"));
     } catch (err) {
       setCart(prevCart); // rollback در صورت خطا (مثلاً موجودی کافی نیست)
       toast.error(err.message, { theme: "dark" });
@@ -111,6 +113,7 @@ export default function CartPage() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "خطا در حذف از سبد خرید");
       await loadCart();
+      window.dispatchEvent(new Event("cart-changed"));
     } catch (err) {
       setCart(prevCart);
       toast.error(err.message, { theme: "dark" });
@@ -120,17 +123,25 @@ export default function CartPage() {
   };
 
   const handleCheckout = async () => {
-    if (!recipientName.trim() || !recipientPhone.trim() || !shippingAddress.trim() || !postalCode.trim()) {
-      toast.error("لطفاً اطلاعات گیرنده را کامل کنید.", { theme: "dark" });
+    if (!recipientName.trim() || !recipientPhone.trim()) {
+      toast.error("لطفاً نام و شماره تماس گیرنده را کامل کنید.", { theme: "dark" });
       return;
     }
     if (!/^09\d{9}$/.test(recipientPhone)) {
       toast.error("شماره تماس گیرنده معتبر نیست.", { theme: "dark" });
       return;
     }
-    if (!/^\d{10}$/.test(postalCode)) {
-      toast.error("کد پستی باید دقیقاً ۱۰ رقم باشد.", { theme: "dark" });
-      return;
+
+    // آدرس و کد پستی فقط برای ارسال با پیک الزامی‌ان
+    if (deliveryMethod === "COURIER") {
+      if (!shippingAddress.trim() || !postalCode.trim()) {
+        toast.error("لطفاً آدرس و کد پستی را برای ارسال با پیک وارد کنید.", { theme: "dark" });
+        return;
+      }
+      if (!/^\d{10}$/.test(postalCode)) {
+        toast.error("کد پستی باید دقیقاً ۱۰ رقم باشد.", { theme: "dark" });
+        return;
+      }
     }
 
     setCheckoutLoading(true);
@@ -147,10 +158,11 @@ export default function CartPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items,
+          deliveryMethod,
           recipientName: recipientName.trim(),
           recipientPhone: recipientPhone.trim(),
-          shippingAddress: shippingAddress.trim(),
-          postalCode: postalCode.trim(),
+          shippingAddress: deliveryMethod === "COURIER" ? shippingAddress.trim() : "",
+          postalCode: deliveryMethod === "COURIER" ? postalCode.trim() : "",
         }),
       });
 
@@ -169,6 +181,7 @@ export default function CartPage() {
       // سبد خرید باید داخل خودِ POST /api/orders (همون تراکنشی که سفارش ساخته میشه) پاک بشه؛
       // اینجا فقط برای بازخورد فوریِ UI صفرش می‌کنیم
       setCart({ items: [], total: 0 });
+      window.dispatchEvent(new Event("cart-changed"));
       setTimeout(() => {
         window.location.href = "/";
       }, 1500);
@@ -295,6 +308,39 @@ export default function CartPage() {
 
             {/* اطلاعات گیرنده + فاکتور */}
             <div className="space-y-6">
+              {/* انتخاب نحوه دریافت سفارش */}
+              <div className="border border-white/10 bg-[#151516]/80 p-6 rounded-3xl backdrop-blur-xl">
+                <h2 className="text-lg font-bold mb-4 border-b border-white/10 pb-3">نحوه دریافت سفارش</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod("PICKUP")}
+                    disabled={checkoutLoading}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all cursor-pointer ${
+                      deliveryMethod === "PICKUP"
+                        ? "border-[#CD9F63] bg-[#CD9F63]/10"
+                        : "border-white/10 bg-white/5 hover:border-white/20"
+                    }`}
+                  >
+                    <FaStore className={deliveryMethod === "PICKUP" ? "text-[#CD9F63]" : "text-gray-400"} />
+                    <span className="text-xs font-bold text-center">دریافت حضوری از فروشگاه</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod("COURIER")}
+                    disabled={checkoutLoading}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all cursor-pointer ${
+                      deliveryMethod === "COURIER"
+                        ? "border-[#CD9F63] bg-[#CD9F63]/10"
+                        : "border-white/10 bg-white/5 hover:border-white/20"
+                    }`}
+                  >
+                    <FaTruck className={deliveryMethod === "COURIER" ? "text-[#CD9F63]" : "text-gray-400"} />
+                    <span className="text-xs font-bold text-center">ارسال با پیک</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="border border-white/10 bg-[#151516]/80 p-6 rounded-3xl backdrop-blur-xl">
                 <h2 className="text-lg font-bold mb-4 border-b border-white/10 pb-3">اطلاعات گیرنده</h2>
                 <div className="space-y-3">
@@ -315,23 +361,35 @@ export default function CartPage() {
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-left outline-none focus:border-[#CD9F63]"
                     disabled={checkoutLoading}
                   />
-                  <input
-                    type="text"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9]/g, ""))}
-                    placeholder="کد پستی (۱۰ رقم)"
-                    maxLength={10}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-left outline-none focus:border-[#CD9F63]"
-                    disabled={checkoutLoading}
-                  />
-                  <textarea
-                    value={shippingAddress}
-                    onChange={(e) => setShippingAddress(e.target.value)}
-                    placeholder="آدرس دقیق پستی"
-                    rows={3}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-right outline-none focus:border-[#CD9F63] resize-none"
-                    disabled={checkoutLoading}
-                  />
+
+                  {/* آدرس و کد پستی فقط برای ارسال با پیک نمایش داده می‌شن */}
+                  {deliveryMethod === "COURIER" && (
+                    <>
+                      <input
+                        type="text"
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9]/g, ""))}
+                        placeholder="کد پستی (۱۰ رقم)"
+                        maxLength={10}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-left outline-none focus:border-[#CD9F63]"
+                        disabled={checkoutLoading}
+                      />
+                      <textarea
+                        value={shippingAddress}
+                        onChange={(e) => setShippingAddress(e.target.value)}
+                        placeholder="آدرس دقیق پستی"
+                        rows={3}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-right outline-none focus:border-[#CD9F63] resize-none"
+                        disabled={checkoutLoading}
+                      />
+                    </>
+                  )}
+
+                  {deliveryMethod === "PICKUP" && (
+                    <p className="text-xs text-gray-400 bg-white/5 rounded-xl p-3">
+                      سفارش شما در فروشگاه آماده می‌شود و می‌توانید حضوری آن را دریافت کنید.
+                    </p>
+                  )}
                 </div>
               </div>
 

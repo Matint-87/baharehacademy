@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCartStore } from "@/src/store/useCartStore";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
@@ -10,7 +9,6 @@ import {
   FaPlus,
   FaMinus,
   FaArrowRight,
-  FaClock,
   FaTag,
 } from "react-icons/fa";
 
@@ -21,9 +19,8 @@ export default function ProductDetailPage() {
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState(250);
-
-  const addToCart = useCartStore((state) => state.addToCart);
+  const [quantity, setQuantity] = useState(1);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -36,8 +33,7 @@ export default function ProductDetailPage() {
 
         if (data.success && data.product) {
           setProduct(data.product);
-          // تنظیم مقدار اولیه بر اساس استپ محصول یا پیش‌فرض ۲۵۰
-          setQuantity(data.product.step || 250);
+          setQuantity(1);
         } else {
           toast.error("محصول مورد نظر یافت نشد.", { theme: "dark" });
         }
@@ -53,34 +49,41 @@ export default function ProductDetailPage() {
   }, [id]);
 
   const handleQuantityChange = (delta) => {
-    const step = product?.step || 100;
     setQuantity((prev) => {
-      const updated = prev + delta * step;
-      return updated > 0 ? updated : step;
+      let updated = prev + delta;
+      if (updated < 1) updated = 1;
+      if (product && updated > product.stock) updated = product.stock;
+      return updated;
     });
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
 
-    const cartItem = {
-      id: product.id,
-      title: product.title,
-      pricePerUnit: product.pricePerUnit,
-      unitType: product.unitType,
-      step: product.step,
-      category: product.category,
-      image: product.image,
-    };
+    setAddingToCart(true);
+    try {
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemType: "PRODUCT", productId: product.id, quantity }),
+      });
+      const data = await res.json();
 
-    const res = addToCart(cartItem, "PRODUCT", quantity);
-    if (res.success) {
-      toast.success(
-        `${product.title} (${quantity} گرم) به سبد خرید اضافه شد!`,
-        { theme: "dark" },
-      );
-    } else {
-      toast.info(res.message, { theme: "dark" });
+      if (!res.ok || !data.success) {
+        if (res.status === 401) {
+          toast.info("برای افزودن به سبد خرید ابتدا وارد حساب کاربری خود شوید.", { theme: "dark" });
+          router.push("/login");
+          return;
+        }
+        throw new Error(data.error || "خطا در افزودن به سبد خرید");
+      }
+
+      toast.success(`${product.title} (${quantity} عدد) به سبد خرید اضافه شد!`, { theme: "dark" });
+      window.dispatchEvent(new Event("cart-changed"));
+    } catch (err) {
+      toast.error(err.message, { theme: "dark" });
+    } finally {
+      setAddingToCart(false);
     }
   };
 
@@ -106,7 +109,8 @@ export default function ProductDetailPage() {
     );
   }
 
-  const currentPrice = Math.round((product.pricePerUnit / 1000) * quantity);
+  const currentPrice = product.price * quantity;
+  const outOfStock = product.stock <= 0;
 
   return (
     <main className="min-h-screen bg-[#0b0b0c] px-4 py-12 text-white">
@@ -153,27 +157,32 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="mt-8 border-t border-white/10 pt-6">
-              {/* انتخاب وزن */}
-              <div className="flex items-center justify-between mb-4 bg-white/5 p-3 rounded-xl">
-                <span className="text-xs text-gray-300">مقدار انتخابی:</span>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleQuantityChange(-1)}
-                    className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer"
-                  >
-                    <FaMinus />
-                  </button>
-                  <span className="text-sm font-bold w-16 text-center">
-                    {quantity} گرم
-                  </span>
-                  <button
-                    onClick={() => handleQuantityChange(1)}
-                    className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer"
-                  >
-                    <FaPlus />
-                  </button>
+              {outOfStock ? (
+                <div className="mb-6 text-center text-sm text-red-400 bg-red-500/10 py-3 rounded-xl font-bold">
+                  این محصول ناموجود است
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between mb-4 bg-white/5 p-3 rounded-xl">
+                  <span className="text-xs text-gray-300">تعداد:</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleQuantityChange(-1)}
+                      disabled={quantity <= 1}
+                      className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer disabled:opacity-40"
+                    >
+                      <FaMinus />
+                    </button>
+                    <span className="text-sm font-bold w-12 text-center">{quantity}</span>
+                    <button
+                      onClick={() => handleQuantityChange(1)}
+                      disabled={quantity >= product.stock}
+                      className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer disabled:opacity-40"
+                    >
+                      <FaPlus />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* قیمت */}
               <div className="flex items-center justify-between mb-6">
@@ -186,10 +195,11 @@ export default function ProductDetailPage() {
               {/* دکمه افزودن */}
               <button
                 onClick={handleAddToCart}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#CD9F63] py-3 text-xs font-bold text-[#111] transition-all hover:bg-white cursor-pointer"
+                disabled={outOfStock || addingToCart}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#CD9F63] py-3 text-xs font-bold text-[#111] transition-all hover:bg-white cursor-pointer disabled:opacity-50"
               >
                 <FaShoppingBasket />
-                <span>افزودن به سبد خرید</span>
+                <span>{addingToCart ? "در حال افزودن..." : "افزودن به سبد خرید"}</span>
               </button>
             </div>
           </div>

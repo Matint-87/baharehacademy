@@ -1,20 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useCartStore } from "@/src/store/useCartStore";
+import { useRouter } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { FaShoppingBasket, FaPlus, FaMinus } from "react-icons/fa";
 import Link from "next/link";
 
 export default function ProductsPage() {
+  const router = useRouter();
   const [products, setProducts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [quantities, setQuantities] = useState({});
-
-  const addToCart = useCartStore((state) => state.addToCart);
+  const [addingId, setAddingId] = useState(null); // جلوگیری از دابل‌کلیک روی یک محصول
 
   useEffect(() => {
     let isMounted = true;
@@ -33,7 +33,7 @@ export default function ProductsPage() {
             setQuantities((prevQtys) => {
               const initialQtys = { ...prevQtys };
               data.products.forEach((p) => {
-                if (!initialQtys[p.id]) initialQtys[p.id] = 250;
+                if (!initialQtys[p.id]) initialQtys[p.id] = 1;
               });
               return initialQtys;
             });
@@ -56,34 +56,43 @@ export default function ProductsPage() {
     };
   }, [page]);
 
-  const handleQuantityChange = (id, step, delta) => {
+  const handleQuantityChange = (product, delta) => {
     setQuantities((prev) => {
-      const current = prev[id] || 250;
-      const updated = current + delta * (step || 100);
-      return { ...prev, [id]: updated > 0 ? updated : step || 100 };
+      const current = prev[product.id] || 1;
+      let updated = current + delta;
+      if (updated < 1) updated = 1;
+      if (updated > product.stock) updated = product.stock;
+      return { ...prev, [product.id]: updated };
     });
   };
 
-  const handleAddToCart = (product) => {
-    const qty = quantities[product.id] || 250;
+  const handleAddToCart = async (product) => {
+    const qty = quantities[product.id] || 1;
 
-    const cartItem = {
-      id: product.id, // شناسه‌ی واقعی محصول - نه رشته‌ی ترکیبی
-      title: product.title,
-      pricePerUnit: product.pricePerUnit,
-      unitType: product.unitType,
-      step: product.step,
-      category: product.category,
-      image: product.image,
-    };
-
-    const res = addToCart(cartItem, "PRODUCT", qty); // itemType و quantity صریح فرستاده می‌شه
-    if (res.success) {
-      toast.success(`${product.title} (${qty} گرم) به سبد خرید اضافه شد!`, {
-        theme: "dark",
+    setAddingId(product.id);
+    try {
+      const res = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemType: "PRODUCT", productId: product.id, quantity: qty }),
       });
-    } else {
-      toast.info(res.message, { theme: "dark" });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        if (res.status === 401) {
+          toast.info("برای افزودن به سبد خرید ابتدا وارد حساب کاربری خود شوید.", { theme: "dark" });
+          router.push("/login");
+          return;
+        }
+        throw new Error(data.error || "خطا در افزودن به سبد خرید");
+      }
+
+      toast.success(`${product.title} (${qty} عدد) به سبد خرید اضافه شد!`, { theme: "dark" });
+      window.dispatchEvent(new Event("cart-changed"));
+    } catch (err) {
+      toast.error(err.message, { theme: "dark" });
+    } finally {
+      setAddingId(null);
     }
   };
 
@@ -96,7 +105,7 @@ export default function ProductsPage() {
             محصولات پروتئینی تازه
           </h1>
           <p className="mt-3 text-sm text-gray-400">
-            انواع کالباس، سوسیس و ناگت ارگانیک - انتخاب وزن به دلخواه شما
+            انواع کالباس، سوسیس و ناگت ارگانیک
           </p>
         </div>
 
@@ -111,10 +120,10 @@ export default function ProductsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => {
-              const currentQty = quantities[product.id] || 250;
-              const currentPrice = Math.round(
-                (product.pricePerUnit / 1000) * currentQty,
-              );
+              const currentQty = quantities[product.id] || 1;
+              const currentPrice = product.price * currentQty;
+              const outOfStock = product.stock <= 0;
+              const isAdding = addingId === product.id;
 
               return (
                 <div
@@ -155,32 +164,32 @@ export default function ProductsPage() {
                   </div>
 
                   <div className="mt-6 border-t border-white/10 pt-4">
-                    <div className="flex items-center justify-between mb-4 bg-white/5 p-2 rounded-xl">
-                      <span className="text-xs text-gray-300">
-                        مقدار (گرم):
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() =>
-                            handleQuantityChange(product.id, product.step, -1)
-                          }
-                          className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer"
-                        >
-                          <FaMinus />
-                        </button>
-                        <span className="text-sm font-bold w-12 text-center">
-                          {currentQty} گ
-                        </span>
-                        <button
-                          onClick={() =>
-                            handleQuantityChange(product.id, product.step, 1)
-                          }
-                          className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer"
-                        >
-                          <FaPlus />
-                        </button>
+                    {outOfStock ? (
+                      <div className="mb-4 text-center text-xs text-red-400 bg-red-500/10 py-2 rounded-xl font-bold">
+                        ناموجود
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center justify-between mb-4 bg-white/5 p-2 rounded-xl">
+                        <span className="text-xs text-gray-300">تعداد:</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleQuantityChange(product, -1)}
+                            disabled={currentQty <= 1}
+                            className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer disabled:opacity-40"
+                          >
+                            <FaMinus />
+                          </button>
+                          <span className="text-sm font-bold w-8 text-center">{currentQty}</span>
+                          <button
+                            onClick={() => handleQuantityChange(product, 1)}
+                            disabled={currentQty >= product.stock}
+                            className="bg-white/10 p-2 rounded-lg hover:bg-white/25 transition-all text-xs cursor-pointer disabled:opacity-40"
+                          >
+                            <FaPlus />
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-xs text-gray-400">قیمت نهایی:</span>
@@ -191,10 +200,11 @@ export default function ProductsPage() {
 
                     <button
                       onClick={() => handleAddToCart(product)}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#CD9F63] py-3 text-xs font-bold text-[#111] transition-all hover:bg-white cursor-pointer"
+                      disabled={outOfStock || isAdding}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#CD9F63] py-3 text-xs font-bold text-[#111] transition-all hover:bg-white cursor-pointer disabled:opacity-50"
                     >
                       <FaShoppingBasket />
-                      <span>افزودن به سبد خرید</span>
+                      <span>{isAdding ? "در حال افزودن..." : "افزودن به سبد خرید"}</span>
                     </button>
                   </div>
                 </div>

@@ -97,6 +97,11 @@ model Recipe {
   updatedAt    DateTime @updatedAt
 }
 
+enum DeliveryMethod {
+  PICKUP  
+  COURIER 
+}
+
 model Order {
   id     String @id @default(uuid())
   userId Int
@@ -105,10 +110,12 @@ model Order {
   status      OrderStatus @default(PENDING_PAYMENT)
   totalAmount Int
 
+  deliveryMethod DeliveryMethod @default(COURIER)
+
   recipientName   String
   recipientPhone  String
-  shippingAddress String
-  postalCode      String
+  shippingAddress String?
+  postalCode      String?
 
   cancelReason String?
 

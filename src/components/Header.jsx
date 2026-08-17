@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCartStore } from "@/src/store/useCartStore";
 import {
   RiBookOpenLine,
   RiShoppingBagLine,
@@ -24,6 +23,7 @@ function Header() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [user, setUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -35,9 +35,6 @@ function Header() {
   const [searchLoading, setSearchLoading] = useState(false);
   const searchInputRef = useRef(null);
   const dropdownRef = useRef(null);
-
-  const cart = useCartStore((state) => state.cart);
-  const totalItems = cart.length;
 
   // بستن منوی کشویی با کلیک خارج از آن
   useEffect(() => {
@@ -67,6 +64,23 @@ function Header() {
     }
   }, []);
 
+  // تعداد آیتم‌های سبد خرید همیشه از سرور خونده می‌شه، نه از یک استور لوکال
+  const fetchCartCount = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cart");
+      if (!res.ok) {
+        setCartCount(0); // کاربر لاگین نیست یا خطا -> سبد خالی نشون بده
+        return;
+      }
+      const data = await res.json();
+      if (data.success) {
+        setCartCount(data.cart.items.length);
+      }
+    } catch (e) {
+      console.error("Error fetching cart count:", e);
+    }
+  }, []);
+
   useEffect(() => {
     setIsMounted(true);
 
@@ -84,10 +98,17 @@ function Header() {
 
     // گرفتن تازه‌ترین اطلاعات از سرور
     fetchUser();
+    fetchCartCount();
 
+    // هر جای دیگه‌ی سایت که سبد خرید تغییر کنه (افزودن/حذف/ویرایش)،
+    // با dispatch کردن این ایونت باید هدر رو مطلع کنه تا badge آپدیت بشه
     window.addEventListener("auth-changed", fetchUser);
-    return () => window.removeEventListener("auth-changed", fetchUser);
-  }, [fetchUser]);
+    window.addEventListener("cart-changed", fetchCartCount);
+    return () => {
+      window.removeEventListener("auth-changed", fetchUser);
+      window.removeEventListener("cart-changed", fetchCartCount);
+    };
+  }, [fetchUser, fetchCartCount]);
 
   // فوکوس خودکار روی اینپوت سرچ وقتی مدال باز میشه
   useEffect(() => {
@@ -188,9 +209,9 @@ function Header() {
 
               <Link href="/cart">
                 <div className="relative p-2">
-                  {totalItems > 0 && (
+                  {isMounted && cartCount > 0 && (
                     <span className="px-1.5 py-0.5 absolute -top-1 -right-2 text-xs flex items-center justify-center rounded-full bg-[#CD9F63] text-[#101011] font-bold">
-                      {totalItems}
+                      {cartCount}
                     </span>
                   )}
                   <RiShoppingBasketLine className="text-2xl text-white hover:text-[#CD9F63] transition-colors" />
@@ -365,9 +386,7 @@ function Header() {
                                   {product.title}
                                 </h4>
                                 <p className="text-[11px] text-gray-400">
-                                  {Number(
-                                    product.pricePerUnit || 0,
-                                  ).toLocaleString()}{" "}
+                                  {Number(product.price || 0).toLocaleString()}{" "}
                                   تومان
                                 </p>
                               </div>
